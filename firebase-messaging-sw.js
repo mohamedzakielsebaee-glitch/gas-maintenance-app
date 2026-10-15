@@ -1,20 +1,53 @@
-importScripts('https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js', 'https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging-compat.js');
+/* Gas Maintenance Group - Firebase Cloud Messaging service worker */
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  const targetUrl = event.notification?.data?.url || './';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          try { client.navigate(targetUrl); } catch (e) {}
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
+  );
+});
+
+importScripts('https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging-compat.js');
+
 firebase.initializeApp({
-  apiKey: "AIzaSyCnCxBurG8x82dgCLIbps-3yUk9P7FgK6k", authDomain: "gas-maintenance-app.firebaseapp.com",
-  projectId: "gas-maintenance-app", storageBucket: "gas-maintenance-app.firebasestorage.app",
-  messagingSenderId: "712614942966", appId: "1:712614942966:web:5160b841b594d605a974d7"
+  apiKey: 'AIzaSyCnCxBurG8x82dgCLIbps-3yUk9P7FgK6k',
+  authDomain: 'gas-maintenance-app.firebaseapp.com',
+  projectId: 'gas-maintenance-app',
+  storageBucket: 'gas-maintenance-app.firebasestorage.app',
+  messagingSenderId: '712614942966',
+  appId: '1:712614942966:web:5160b841b594d605a974d7',
+  measurementId: 'G-TXW9XH9QS9'
 });
-firebase.messaging().onBackgroundMessage(p => {
-  const d = p.data || {};
-  self.registration.showNotification(d.title || 'Gas Maintenance', {
-    body: d.body || '', tag: d.tag, dir: 'rtl', lang: 'ar',
-    vibrate: [300, 100, 300, 100, 300], requireInteraction: d.urgent === '1', data: { url: './' }
+
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[firebase-messaging-sw.js] Background message:', payload);
+
+  const notification = payload.notification || {};
+  const data = payload.data || {};
+  const title = notification.title || data.title || 'Gas Maintenance Group';
+  const body = notification.body || data.body || 'لديك إشعار جديد';
+  const url = data.url || './';
+
+  return self.registration.showNotification(title, {
+    body,
+    icon: data.icon || './favicon.ico',
+    badge: data.badge || './favicon.ico',
+    tag: data.tag || 'gmg-notification',
+    dir: 'rtl',
+    lang: 'ar',
+    vibrate: [300, 100, 300],
+    data: { url }
   });
-});
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => {
-    for (const c of l) if ('focus' in c) return c.focus();
-    return clients.openWindow('./');
-  }));
 });

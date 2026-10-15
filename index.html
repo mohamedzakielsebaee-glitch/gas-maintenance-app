@@ -50,7 +50,7 @@
         window.firebaseOnSnapshotFunc = onSnapshot;
         window.firebaseSignInEmailFunc = signInWithEmailAndPassword;
         window.firebaseSignOut = signOut;
-        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk'; // ضع هنا مفتاح Web Push من Firebase Console > Cloud Messaging
+        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk'; // من Firebase Console > Project settings > Cloud Messaging > Web Push certificates
         window.gmgGetPushToken = async (reg) => {
             if (!VAPID_KEY) return false;
             try {
@@ -710,7 +710,7 @@
         function updateSoundIcon() { const i = document.getElementById('soundIcon'); if (i) i.className = 'fas text-xl ' + (soundOn ? 'fa-volume-high' : 'fa-volume-xmark text-slate-300'); }
 
         // ---- إشعارات النظام (تعمل والتطبيق في الخلفية؛ ومع Cloud Function تعمل والتطبيق مغلق) ----
-        async function gmgRegisterSW() { if (!('serviceWorker' in navigator)) return null; try { return await navigator.serviceWorker.register('firebase-messaging-sw.js'); } catch (e) { return null; } }
+        async function gmgRegisterSW() { if (!('serviceWorker' in navigator)) return null; try { return await navigator.serviceWorker.register('./firebase-messaging-sw.js', {scope: './'}); } catch (e) { console.warn('FCM service worker registration failed', e); return null; } }
         function updatePushBtn() { const b = document.getElementById('pushBtn'); if (b) b.classList.toggle('hidden', !('Notification' in window) || Notification.permission === 'granted'); }
         async function initPush() {
             if (!('Notification' in window)) return;
@@ -721,8 +721,13 @@
             if (!('Notification' in window)) { showToast('المتصفح لا يدعم الإشعارات (على الآيفون ثبّت التطبيق أولاً)', 'danger'); return; }
             const p = await Notification.requestPermission();
             if (p !== 'granted') { showToast('لم يتم السماح بالإشعارات', 'danger'); return; }
-            const r = await gmgRegisterSW(); if (r && window.gmgGetPushToken) await window.gmgGetPushToken(r);
-            updatePushBtn(); showToast('تم تفعيل إشعارات الهاتف', 'success');
+            const r = await gmgRegisterSW();
+            if (!r) { showToast('تعذر تشغيل خدمة الإشعارات. تأكد أن التطبيق يعمل عبر HTTPS.', 'danger'); return; }
+            if (r && window.gmgGetPushToken) {
+                const ok = await window.gmgGetPushToken(r);
+                if (!ok) { showToast('تم السماح بالإشعارات لكن لم يتم تسجيل الجهاز بعد. أضف VAPID Key من Firebase.', 'danger'); updatePushBtn(); return; }
+            }
+            updatePushBtn(); showToast('تم تفعيل إشعارات الهاتف وتسجيل الجهاز', 'success');
         };
         function systemNotify(title, body, tag) {
             if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
