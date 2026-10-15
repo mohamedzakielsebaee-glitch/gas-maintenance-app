@@ -17,7 +17,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -49,6 +49,19 @@
         window.firebaseSetDocFunc = setDoc;
         window.firebaseOnSnapshotFunc = onSnapshot;
         window.firebaseSignInEmailFunc = signInWithEmailAndPassword;
+        window.firebaseSignOut = signOut;
+        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk'; // ضع هنا مفتاح Web Push من Firebase Console > Cloud Messaging
+        window.gmgGetPushToken = async (reg) => {
+            if (!VAPID_KEY) return false;
+            try {
+                const { getMessaging, getToken } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging.js");
+                const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+                if (!token) return false;
+                const u = (typeof appState !== 'undefined' && appState.currentUser) || {};
+                await setDoc(doc(db, 'artifacts', window.appId, 'public', 'data', 'fcmTokens', token.slice(-40)), { token, userId: u.id || '', role: u.role || '', updated: Date.now() });
+                return true;
+            } catch (e) { console.error('push', e); return false; }
+        };
 
         window.firebaseReady = new Promise(async (resolve) => {
             onAuthStateChanged(auth, async (user) => {
@@ -198,6 +211,8 @@
                         <i class="fas fa-globe text-secondary"></i> <span id="langLabel">EN</span>
                     </button>
 
+                    <button id="soundBtn" onclick="toggleSound()" class="text-slate-500 hover:text-primary transition p-2 rounded-full hover:bg-slate-100" title="الصوت"><i id="soundIcon" class="fas fa-volume-high text-xl"></i></button>
+                    <button id="pushBtn" onclick="enablePush()" class="hidden text-amber-600 hover:text-amber-700 transition p-2 rounded-full hover:bg-amber-50" title="تفعيل إشعارات الهاتف"><i class="fas fa-bell-concierge text-xl"></i></button>
                     <button id="alertsBtn" class="relative text-slate-500 hover:text-danger transition p-2 rounded-full hover:bg-slate-100">
                         <i class="fas fa-bell text-xl"></i>
                         <span id="alertsBadge" class="absolute top-0 right-0 bg-danger text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center hidden">0</span>
@@ -241,14 +256,14 @@
                             <p class="text-2xl font-bold">5</p>
                         </div>
                     </div>
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div onclick="showMaintenanceDue()" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-orange-300 transition">
                         <div class="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xl"><i class="fas fa-tools"></i></div>
                         <div>
                             <p class="text-sm text-slate-500" data-i18n="maintenance_due">معدات تحتاج صيانة</p>
                             <p class="text-2xl font-bold" id="maintenanceDueCount">0</p>
                         </div>
                     </div>
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div onclick="showActiveIssues()" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-red-300 transition">
                         <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl"><i class="fas fa-exclamation-triangle"></i></div>
                         <div>
                             <p class="text-sm text-slate-500" data-i18n="active_issues">بلاغات نشطة</p>
@@ -356,6 +371,11 @@
                             </div>
                             <button type="submit" class="w-full bg-dark hover:bg-black text-white font-bold py-2 rounded-lg text-sm transition shadow">إضافة المعدة وحفظها في السحابة</button>
                         </form>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-2">
+                        <h3 class="font-bold mb-4 text-slate-800 border-b pb-2"><i class="fas fa-trash-alt text-danger"></i> إزالة معدة</h3>
+                        <select id="del-eq-factory" class="w-full sm:w-1/2 border rounded-lg px-3 py-2 text-sm bg-slate-50 mb-3" onchange="renderDeleteEquipList()"></select>
+                        <div id="del-eq-list" class="max-h-72 overflow-y-auto"></div>
                     </div>
                 </div>
             </div>
@@ -526,6 +546,8 @@
                     </div>
                 </div>
 
+                <div id="view-list-panel" class="hidden-view"><div id="list-panel-body" class="space-y-3"></div></div>
+
                 <!-- نافذة تصدير وتحميل التقارير الجاهزة (لضمان عمل التصدير في كافة المتصفحات والمعاينات) -->
                 <div id="view-export-preview" class="hidden-view space-y-4">
                     <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between gap-3">
@@ -660,41 +682,52 @@
                 .replace(/'/g, '&#039;');
         }
 
+        let _actx = null, soundOn = localStorage.getItem('gmg_sound') !== 'off';
+        function _ctx() { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; if (!_actx) _actx = new C(); if (_actx.state === 'suspended') _actx.resume(); return _actx; }
+        ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { try { _ctx(); } catch (e) {} }, { once: true }));
+        const SOUNDS = {
+            issue: { w: 'square', v: .22, n: [[880,0,.16],[587,.18,.16],[880,.36,.16],[587,.54,.16],[880,.72,.3]], vib: [300,100,300,100,300] },
+            resolved: { w: 'sine', v: .2, n: [[523,0,.25],[659,.1,.25],[784,.2,.25],[1046,.3,.5]], vib: [120,60,120] },
+            pm: { w: 'triangle', v: .2, n: [[660,0,.2],[880,.14,.35]], vib: [150] },
+            notification: { w: 'sine', v: .18, n: [[784,0,.2],[988,.12,.35]], vib: [100] },
+            success: { w: 'sine', v: .14, n: [[600,0,.12],[900,.08,.25]] },
+            error: { w: 'sawtooth', v: .12, n: [[300,0,.18],[220,.15,.3]] }
+        };
         function playAlertSound(type) {
+            if (!soundOn) return;
             try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                const now = ctx.currentTime;
+                const c = _ctx(), p = SOUNDS[type] || SOUNDS.notification; if (!c) return;
+                p.n.forEach(([f, t, d]) => {
+                    const o = c.createOscillator(), g = c.createGain(), st = c.currentTime + t;
+                    o.type = p.w; o.frequency.setValueAtTime(f, st);
+                    g.gain.setValueAtTime(p.v, st); g.gain.exponentialRampToValueAtTime(.001, st + d);
+                    o.connect(g); g.connect(c.destination); o.start(st); o.stop(st + d);
+                });
+                if (p.vib && navigator.vibrate) navigator.vibrate(p.vib);
+            } catch (e) {}
+        }
+        window.toggleSound = function() { soundOn = !soundOn; localStorage.setItem('gmg_sound', soundOn ? 'on' : 'off'); updateSoundIcon(); if (soundOn) playAlertSound('success'); };
+        function updateSoundIcon() { const i = document.getElementById('soundIcon'); if (i) i.className = 'fas text-xl ' + (soundOn ? 'fa-volume-high' : 'fa-volume-xmark text-slate-300'); }
 
-                if (type === 'issue') {
-                    [587.33, 880, 587.33, 880].forEach((freq, idx) => {
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(freq, now + idx * 0.14);
-                        gain.gain.setValueAtTime(0.25, now + idx * 0.14);
-                        gain.gain.exponentialRampToValueAtTime(0.001, now + (idx + 1) * 0.14);
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start(now + idx * 0.14);
-                        osc.stop(now + (idx + 1) * 0.14);
-                    });
-                } else {
-                    [523.25, 659.25, 1046.50].forEach((freq, idx) => {
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
-                        gain.gain.setValueAtTime(0.15, now + idx * 0.09);
-                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.35);
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start(now + idx * 0.09);
-                        osc.stop(now + idx * 0.09 + 0.35);
-                    });
-                }
-            } catch (e) { console.log("Audio play blocked:", e); }
+        // ---- إشعارات النظام (تعمل والتطبيق في الخلفية؛ ومع Cloud Function تعمل والتطبيق مغلق) ----
+        async function gmgRegisterSW() { if (!('serviceWorker' in navigator)) return null; try { return await navigator.serviceWorker.register('firebase-messaging-sw.js'); } catch (e) { return null; } }
+        function updatePushBtn() { const b = document.getElementById('pushBtn'); if (b) b.classList.toggle('hidden', !('Notification' in window) || Notification.permission === 'granted'); }
+        async function initPush() {
+            if (!('Notification' in window)) return;
+            if (Notification.permission === 'granted') { const r = await gmgRegisterSW(); if (r && window.gmgGetPushToken) window.gmgGetPushToken(r); }
+            updatePushBtn();
+        }
+        window.enablePush = async function() {
+            if (!('Notification' in window)) { showToast('المتصفح لا يدعم الإشعارات (على الآيفون ثبّت التطبيق أولاً)', 'danger'); return; }
+            const p = await Notification.requestPermission();
+            if (p !== 'granted') { showToast('لم يتم السماح بالإشعارات', 'danger'); return; }
+            const r = await gmgRegisterSW(); if (r && window.gmgGetPushToken) await window.gmgGetPushToken(r);
+            updatePushBtn(); showToast('تم تفعيل إشعارات الهاتف', 'success');
+        };
+        function systemNotify(title, body, tag) {
+            if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
+            const o = { body, tag, icon: document.getElementById('pwa-favicon')?.href, vibrate: [300,100,300], dir: 'rtl', lang: 'ar' };
+            navigator.serviceWorker?.getRegistration().then(r => r ? r.showNotification(title, o) : new Notification(title, o));
         }
 
         function compressImageFile(file, maxWidth = 600, quality = 0.55) {
@@ -845,6 +878,7 @@
                     events: appState.events || [],
                     dailyInspections: appState.dailyInspections || {},
                     maintenanceCycles: appState.maintenanceCycles || {},
+                    pmAssigned: appState.pmAssigned || {},
                     lastUpdated: lastPendingSaveTime
                 });
                 const docRef = window.firebaseDocFunc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'appState', 'main');
@@ -888,7 +922,9 @@
                                     else if(latestEvent.action === 'pm_updated') actionText = currentLang==='ar'?'حدّث بنود الصيانة لـ':'updated PM tasks for';
                                     else if(latestEvent.action === 'cycle_done') actionText = currentLang==='ar'?'سجل صيانة دورة 4000 ساعة لـ':'recorded 4000h maintenance for';
                                     
-                                    playAlertSound(latestEvent.action === 'issue' ? 'issue' : 'notification');
+                                    const _snd = { issue: 'issue', issue_resolved: 'resolved', cycle_done: 'resolved', factory_pm_done: 'pm', pm_updated: 'pm' }[latestEvent.action] || 'notification';
+                                    playAlertSound(_snd);
+                                    systemNotify(latestEvent.action === 'issue' ? '🚨 عطل طارئ' : 'Gas Maintenance', `${latestEvent.userName} ${actionText}: ${latestEvent.details}`, latestEvent.id);
                                     showToast(`🔔 ${escapeHTML(latestEvent.userName)} ${actionText}: ${escapeHTML(latestEvent.details)}`, latestEvent.action === 'issue' ? 'danger' : 'info');
                                 }
                             }
@@ -902,7 +938,8 @@
                             factoryPmLogs: data.factoryPmLogs || {},
                             events: data.events || [],
                             dailyInspections: data.dailyInspections || {},
-                            maintenanceCycles: data.maintenanceCycles || {}
+                            maintenanceCycles: data.maintenanceCycles || {},
+                            pmAssigned: data.pmAssigned || {}
                         };
                         localStorage.setItem('gmg_state', JSON.stringify(appState));
                     } else { 
@@ -988,6 +1025,61 @@
             if (appState.events.length > 40) appState.events.pop();
         }
 
+        function getPendingTasks(equipId) {
+            const tasks = (appState.pmTemplates || {})[equipId] || [], logs = (appState.factoryPmLogs || {})[equipId] || [];
+            const asg = (appState.pmAssigned || {})[equipId] || {};
+            return tasks.filter(t => { const since = asg[t] || ''; return !logs.some(l => l.task === t && (!since || l.date > since)); });
+        }
+        const _fmt = d => new Date(d).toLocaleString(currentLang === 'ar' ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        window.showActiveIssues = function() {
+            const open = appState.alerts.filter(a => a.status === 'open');
+            document.getElementById('list-panel-body').innerHTML = open.length ? open.map(a => `
+                <div class="p-3 border border-red-200 bg-red-50 rounded-xl">
+                    <div class="flex justify-between gap-2"><b class="text-sm text-red-900">${escapeHTML(a.factoryName)} - ${escapeHTML(a.equipName)}</b><span class="text-[10px] text-red-600" dir="ltr">${_fmt(a.date)}</span></div>
+                    <p class="text-xs mt-1 text-slate-700">${escapeHTML(a.description)}</p>
+                    <div class="flex justify-between items-center mt-2 gap-2"><span class="text-[10px] text-slate-500">المُبلغ: ${escapeHTML(a.user)}</span>
+                    <div class="flex gap-2"><button onclick="renderIssueDetailsModal(appState.alerts.find(x=>x.id==='${a.id}'))" class="bg-white border border-red-200 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold">التفاصيل</button>
+                    <button onclick="resolveIssue('${a.id}')" class="bg-success text-white px-3 py-1.5 rounded-lg text-xs font-bold"><i class="fas fa-check-double"></i> تم الإنجاز</button></div></div>
+                </div>`).join('') : '<p class="text-center text-slate-400 py-8"><i class="fas fa-check-circle text-3xl text-success block mb-2"></i>لا توجد بلاغات نشطة</p>';
+            openModal('view-list-panel', 'البلاغات النشطة (' + open.length + ')'); window._fromList = true;
+        };
+
+        window.showMaintenanceDue = function() {
+            const rows = [];
+            appState.factories.forEach(f => f.departments.forEach(d => d.equipment.forEach(e => {
+                const pend = getPendingTasks(e.id), ms = calculateMaintenanceStatus(e.hours), hoursDue = ms.remaining <= 200;
+                if (pend.length || hoursDue) rows.push({ f, e, pend, hoursDue, ms });
+            })));
+            document.getElementById('list-panel-body').innerHTML = rows.length ? rows.map(r => `
+                <div class="p-3 border border-orange-200 bg-orange-50 rounded-xl">
+                    <div class="flex justify-between items-center gap-2"><b class="text-sm text-orange-900">${escapeHTML(r.f.name)} - ${escapeHTML(r.e.name)}</b>
+                    <button onclick="openDueEquip('${r.e.id}')" class="bg-white border border-orange-200 text-orange-700 px-2.5 py-1 rounded-lg text-[11px] font-bold">فتح المعدة</button></div>
+                    ${r.hoursDue ? `<div class="text-[11px] text-red-700 font-bold mt-1"><i class="fas fa-oil-can"></i> صيانة 4000 ساعة مستحقة (${r.e.hours} HR)</div>` : ''}
+                    ${r.pend.map((t, i) => `<div class="flex justify-between items-center gap-2 bg-white border border-orange-100 rounded-lg px-2.5 py-1.5 mt-1.5 text-xs"><span>${escapeHTML(t)}</span>
+                    <button onclick="completeDueTask('${r.e.id}', ${i})" class="bg-primary text-white px-2.5 py-1 rounded text-[11px] font-bold">إنجاز</button></div>`).join('')}
+                </div>`).join('') : '<p class="text-center text-slate-400 py-8"><i class="fas fa-check-circle text-3xl text-success block mb-2"></i>لا توجد معدات تحتاج صيانة</p>';
+            openModal('view-list-panel', 'معدات تحتاج إلى صيانة (' + rows.length + ')'); window._dueList = true;
+        };
+        window.completeDueTask = function(equipId, idx) { const t = getPendingTasks(equipId)[idx]; if (t !== undefined) completeEquipTask(equipId, t); };
+        window.openDueEquip = function(equipId) { window._dueList = false; handleEventClick(equipId, 'factory_pm_done', ''); };
+
+        window.renderDeleteEquipList = function() {
+            const f = appState.factories.find(x => x.id === document.getElementById('del-eq-factory').value);
+            document.getElementById('del-eq-list').innerHTML = f ? f.departments.map(d => `<div class="mb-2"><div class="text-xs font-bold text-slate-500 mb-1">${escapeHTML(d.name)}</div>` +
+                d.equipment.map(e => `<div class="flex justify-between items-center bg-slate-50 border rounded px-3 py-1.5 mb-1 text-sm"><span>${escapeHTML(e.name)}</span><button onclick="removeEquipment('${e.id}')" class="text-red-500 hover:bg-red-50 p-1.5 rounded" title="حذف"><i class="fas fa-trash"></i></button></div>`).join('') + '</div>').join('') : '';
+        };
+        window.removeEquipment = function(id) {
+            const d = getEquipmentDetails(id); if (!d || appState.currentUser?.role !== 'admin') return;
+            if (!confirm(`حذف "${d.equipment.name}" نهائياً مع بنودها وسجلاتها وبلاغاتها؟`)) return;
+            d.dept.equipment = d.dept.equipment.filter(e => e.id !== id);
+            ['pmTemplates', 'factoryPmLogs', 'dailyInspections', 'maintenanceCycles', 'pmAssigned'].forEach(k => { if (appState[k]) delete appState[k][id]; });
+            appState.alerts = appState.alerts.filter(a => a.equipId !== id);
+            logEvent('equip_removed', `${d.equipment.name} (${d.factory.name}) - تم حذف المعدة`, null);
+            saveState(); renderDeleteEquipList(); updateAdminEquipDropdown();
+            showToast('تم حذف المعدة', 'success');
+        };
+
         function getEquipmentDetails(equipId) {
             for (let f of appState.factories) {
                 for (let d of f.departments) {
@@ -1039,7 +1131,13 @@
             } else { showToast(currentLang==='ar'?'كلمة المرور غير صحيحة':'Invalid password', 'danger'); }
         });
 
-        window.logout = function() { appState.currentUser = null; localStorage.removeItem('gmg_user'); if (unsubscribeData) unsubscribeData(); location.reload(); }
+        window.logout = async function() {
+            if (!confirm(currentLang === 'ar' ? 'هل تريد تسجيل الخروج؟' : 'Log out?')) return;
+            try { if (unsubscribeData) unsubscribeData(); if (window.firebaseSignOut) await window.firebaseSignOut(window.firebaseAuth); } catch (e) {}
+            appState.currentUser = null; localStorage.removeItem('gmg_user');
+            document.querySelectorAll('#loginOverlay input').forEach(i => i.value = '');
+            location.reload();
+        }
 
         function initApp() {
             const skel = document.getElementById('skeleton-loader');
@@ -1054,13 +1152,16 @@
             const adminBtn = document.getElementById('adminSettingsBtn');
             if (adminBtn) u.role === 'admin' ? adminBtn.classList.remove('hidden') : adminBtn.classList.add('hidden');
 
-            checkPwaInstalledState();
+            initPush(); checkPwaInstalledState();
             setLanguage(currentLang); renderSidebar(); showDashboard();
         }
 
         function renderSidebar() {
             const list = document.getElementById('factoryList');
-            list.innerHTML = `<a href="#" onclick="showDashboard()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition text-slate-300 hover:text-white" id="nav-dashboard"><i class="fas fa-home w-5 text-center"></i> <span data-i18n="appName">الرئيسية</span></a><div class="my-2 border-t border-slate-700/50"></div>`;
+            list.innerHTML = `<a href="#" onclick="showDashboard()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition text-slate-300 hover:text-white" id="nav-dashboard"><i class="fas fa-home w-5 text-center"></i> <span data-i18n="appName">الرئيسية</span></a>
+                <a href="#" onclick="event.preventDefault();showActiveIssues();closeSidebar()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition text-slate-300 hover:text-white"><i class="fas fa-exclamation-triangle w-5 text-center text-red-400"></i> <span>${currentLang==='ar'?'البلاغات النشطة':'Active Issues'}</span><span id="sb-issues-badge" class="ms-auto bg-danger text-white text-[10px] font-bold rounded-full px-1.5 hidden">0</span></a>
+                <a href="#" onclick="event.preventDefault();showMaintenanceDue();closeSidebar()" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-700 transition text-slate-300 hover:text-white"><i class="fas fa-tools w-5 text-center text-orange-400"></i> <span>${currentLang==='ar'?'معدات تحتاج صيانة':'Maintenance Due'}</span><span id="sb-due-badge" class="ms-auto bg-orange-500 text-white text-[10px] font-bold rounded-full px-1.5 hidden">0</span></a>
+                <div class="my-2 border-t border-slate-700/50"></div>`;
             const dashboardLinks = document.getElementById('dashboardFactoryLinks'); dashboardLinks.innerHTML = '';
 
             appState.factories.forEach(f => {
@@ -1131,7 +1232,7 @@
             
             dept.equipment.forEach(eq => {
                 const mStatus = calculateMaintenanceStatus(eq.hours), icon = getIconForType(eq.type);
-                const hasAlert = appState.alerts.some(a => a.equipId === eq.id && a.status === 'open');
+                const hasAlert = appState.alerts.some(a => a.equipId === eq.id && a.status === 'open'); const pend = getPendingTasks(eq.id).length;
                 const alertBadge = hasAlert ? `<div class="absolute top-0 right-0 bg-danger text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold animate-pulse z-10 shadow-sm"><i class="fas fa-exclamation-triangle"></i> Alert</div>` : '';
 
                 const card = document.createElement('div');
@@ -1162,7 +1263,7 @@
                             <i class="fas fa-exclamation-circle mb-1 text-sm"></i> ${currentLang==='ar'?'عطل':'Issue'}
                         </button>
                         <button onclick="openEquipPm('${eq.id}')" class="flex flex-col items-center justify-center py-2 bg-blue-50 hover:bg-blue-100 text-primary rounded text-xs font-bold transition border border-blue-200">
-                            <i class="fas fa-tools mb-1 text-sm"></i> ${currentLang==='ar'?'صيانة':'PM'}
+                            <i class="fas fa-tools mb-1 text-sm"></i> ${currentLang==='ar'?'صيانة':'PM'}${pend ? ` <span class="bg-danger text-white rounded-full px-1.5 text-[10px]">${pend}</span>` : ''}
                         </button>
                     </div>
                 `; grid.appendChild(card);
@@ -1172,7 +1273,7 @@
         window.openModal = function(modalId, title) {
             document.getElementById('actionModal').classList.remove('hidden'); 
             document.getElementById('modalTitle').textContent = title;
-            ['form-update-hours', 'view-inspection-history', 'form-daily-inspection', 'form-report-issue', 'form-pm', 'view-hours-management', 'view-issue-details', 'view-pwa-guide', 'view-export-preview'].forEach(id => {
+            ['form-update-hours', 'view-inspection-history', 'form-daily-inspection', 'form-report-issue', 'form-pm', 'view-hours-management', 'view-issue-details', 'view-pwa-guide', 'view-export-preview', 'view-list-panel'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.classList.add('hidden-view');
             });
@@ -1181,7 +1282,7 @@
         }
         
         window.closeModal = function() { 
-            document.getElementById('actionModal').classList.add('hidden'); 
+            document.getElementById('actionModal').classList.add('hidden'); window._fromList = false; window._dueList = false;
         }
 
         window.openEquipPm = function(equipId) {
@@ -1239,7 +1340,7 @@
             const details = getEquipmentDetails(equipId);
             logEvent('factory_pm_done', `${details.equipment.name} (${details.factory.name}) - ${task}`, equipId, task);
             saveState();
-            openEquipPm(equipId);
+            if (window._dueList) showMaintenanceDue(); else openEquipPm(equipId);
             showToast(currentLang==='ar'?'تم تسجيل إنجاز البند بنجاح':'PM task completed successfully', 'success');
         }
 
@@ -1537,6 +1638,7 @@
             if (newEqFactory) newEqFactory.innerHTML = optionsHtml;
             
             updateAdminEquipDropdown();
+            document.getElementById('del-eq-factory').innerHTML = optionsHtml; renderDeleteEquipList();
             updateAdminNewDeptDropdown();
             if(window.innerWidth < 768) closeSidebar();
         };
@@ -1565,6 +1667,7 @@
                 saveState();
                 document.getElementById('form-admin-add-equip').reset();
                 updateAdminEquipDropdown();
+                renderDeleteEquipList();
                 showToast('تمت إضافة المعدة الجديدة وحفظها بنجاح', 'success');
             }
         });
@@ -1617,6 +1720,9 @@
                 if(!appState.pmTemplates) appState.pmTemplates = {};
                 if(!appState.pmTemplates[equipId]) appState.pmTemplates[equipId] = [];
                 appState.pmTemplates[equipId].push(input.value.trim());
+                if(!appState.pmAssigned) appState.pmAssigned = {};
+                if(!appState.pmAssigned[equipId]) appState.pmAssigned[equipId] = {};
+                appState.pmAssigned[equipId][input.value.trim()] = new Date().toISOString();
                 
                 const details = getEquipmentDetails(equipId);
                 logEvent('pm_updated', `${details.equipment.name} (${details.factory.name}) - أضاف بند: ${input.value.trim()}`, equipId);
@@ -1645,10 +1751,12 @@
             let predictiveList = [];
             appState.factories.forEach(f => f.departments.forEach(d => d.equipment.forEach(e => { 
                 const mStatus = calculateMaintenanceStatus(e.hours);
-                if(mStatus.remaining <= 200) dueCount++; 
+                if(mStatus.remaining <= 200 || getPendingTasks(e.id).length) dueCount++; 
                 if(mStatus.percentage >= 90) predictiveList.push(`${e.name} (${f.name}: ${e.hours}h)`);
             })));
             document.getElementById('maintenanceDueCount').innerText = dueCount;
+            const sb = (id, n) => { const el = document.getElementById(id); if (el) { el.textContent = n; el.classList.toggle('hidden', !n); } };
+            sb('sb-issues-badge', openAlerts.length); sb('sb-due-badge', dueCount);
 
             const predBanner = document.getElementById('predictiveAlertBanner');
             const predText = document.getElementById('predictiveAlertText');
@@ -1789,7 +1897,7 @@
         window.resolveIssue = function(alertId) {
             const alert = appState.alerts.find(a => a.id === alertId);
             if(alert) {
-                alert.status = 'resolved';
+                const _fl = window._fromList; alert.status = 'resolved';
                 alert.resolvedBy = appState.currentUser.name;
                 alert.resolvedDate = new Date().toISOString();
                 
@@ -1797,6 +1905,7 @@
                 closeModal();
                 saveState();
                 showToast(currentLang==='ar'?'تم تسجيل إنجاز العمل وإصلاح العطل بنجاح':'Issue successfully resolved', 'success');
+                if (_fl && appState.alerts.some(a => a.status === 'open')) showActiveIssues();
             }
         };
 
@@ -2122,6 +2231,7 @@
 
         window.showToast = function(msg, type='success') {
             const container = document.getElementById('toastContainer'), t = document.createElement('div');
+            if (!String(msg).startsWith('🔔')) playAlertSound(type === 'success' ? 'success' : type === 'danger' ? 'error' : 'notification');
             let bgClass = 'bg-slate-800', iconClass = 'fa-check-circle text-success';
             if(type === 'danger') { bgClass = 'bg-red-600'; iconClass = 'fa-exclamation-circle text-white'; }
             else if(type === 'info') { bgClass = 'bg-blue-600'; iconClass = 'fa-bell text-white'; }
@@ -2131,7 +2241,7 @@
             setTimeout(() => { t.style.opacity = '0'; t.style.transform = currentLang==='ar'?'translateX(-100%)':'translateX(100%)'; t.style.transition = 'all 0.3s ease-out'; setTimeout(() => t.remove(), 300); }, 3000);
         }
 
-        window.onload = setupFirebase;
+        window.onload = () => { updateSoundIcon(); updatePushBtn(); setupFirebase(); };
     </script>
 </body>
 </html>
