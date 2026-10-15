@@ -858,6 +858,9 @@
         let unsubscribeData = null;
         window.currentIssueImage = null; 
         let lastPendingSaveTime = 0;
+        // Prevent an older Firestore snapshot from overwriting newer local changes.
+        let localStateUpdatedAt = Number(localStorage.getItem('gmg_state_updated') || 0);
+        let saveQueue = Promise.resolve();
         const notifiedEventIds = new Set();
         let isInitialSnapshotLoad = true;
 
@@ -867,8 +870,9 @@
 
         function saveState() {
             lastPendingSaveTime = Date.now();
-            
+            localStateUpdatedAt = lastPendingSaveTime;
             localStorage.setItem('gmg_state', JSON.stringify(appState));
+            localStorage.setItem('gmg_state_updated', String(localStateUpdatedAt));
             if (appState.currentUser) {
                 updateBadgesAndDashboard();
                 if (currentFactoryId) renderEquipmentGrid();
@@ -884,10 +888,11 @@
                     dailyInspections: appState.dailyInspections || {},
                     maintenanceCycles: appState.maintenanceCycles || {},
                     pmAssigned: appState.pmAssigned || {},
-                    lastUpdated: lastPendingSaveTime
+                    lastUpdated: localStateUpdatedAt
                 });
                 const docRef = window.firebaseDocFunc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'appState', 'main');
-                window.firebaseSetDocFunc(docRef, cleanPayload).catch(e => {
+                // Queue writes so rapid consecutive saves cannot finish out of order.
+                saveQueue = saveQueue.then(() => window.firebaseSetDocFunc(docRef, cleanPayload)).catch(e => {
                     console.error("Background Firestore sync error:", e);
                 });
             }
@@ -909,7 +914,17 @@
                             isInitialSnapshotLoad = false;
                         }
 
-                        if (Date.now() - lastPendingSaveTime < 1800 && snapshot.metadata?.hasPendingWrites) {
+                        const remoteUpdatedAt = Number(data.lastUpdated || 0);
+
+                        // Ignore stale snapshots. This is the main fix for data that appears
+                        // for a moment and then disappears, or resolved issues returning.
+                        if (remoteUpdatedAt < localStateUpdatedAt) {
+                            console.log('Ignoring stale Firestore snapshot', { remoteUpdatedAt, localStateUpdatedAt });
+                            return;
+                        }
+
+                        // Our own already-applied write does not need to replace local state.
+                        if (remoteUpdatedAt === localStateUpdatedAt && localStateUpdatedAt > 0) {
                             return;
                         }
 
@@ -946,7 +961,9 @@
                             maintenanceCycles: data.maintenanceCycles || {},
                             pmAssigned: data.pmAssigned || {}
                         };
+                        localStateUpdatedAt = remoteUpdatedAt || localStateUpdatedAt;
                         localStorage.setItem('gmg_state', JSON.stringify(appState));
+                        localStorage.setItem('gmg_state_updated', String(localStateUpdatedAt));
                     } else { 
                         isInitialSnapshotLoad = false;
                         saveState(); 
@@ -990,6 +1007,7 @@
                 try { 
                     const parsed = JSON.parse(localState);
                     appState = { ...defaultData, ...parsed };
+                    localStateUpdatedAt = Number(localStorage.getItem('gmg_state_updated') || 0);
                     (appState.events || []).forEach(ev => notifiedEventIds.add(ev.id));
                 } catch(e) {}
             }
