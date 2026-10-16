@@ -50,7 +50,9 @@
         window.firebaseOnSnapshotFunc = onSnapshot;
         window.firebaseSignInEmailFunc = signInWithEmailAndPassword;
         window.firebaseSignOut = signOut;
-        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk'; // من Firebase Console > Project settings > Cloud Messaging > Web Push certificates
+        
+        // FCM Logic - Free Web Push
+        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk'; 
         window.gmgGetPushToken = async (reg) => {
             if (!VAPID_KEY) return false;
             try {
@@ -60,7 +62,7 @@
                 const u = (typeof appState !== 'undefined' && appState.currentUser) || {};
                 await setDoc(doc(db, 'artifacts', window.appId, 'public', 'data', 'fcmTokens', token.slice(-40)), { token, userId: u.id || '', role: u.role || '', updated: Date.now() });
                 return true;
-            } catch (e) { console.error('push', e); return false; }
+            } catch (e) { console.error('push error:', e); return false; }
         };
 
         window.firebaseReady = new Promise(async (resolve) => {
@@ -735,7 +737,8 @@
             navigator.serviceWorker?.getRegistration().then(r => r ? r.showNotification(title, o) : new Notification(title, o));
         }
 
-        function compressImageFile(file, maxWidth = 600, quality = 0.55) {
+        // تم رفع نسبة الضغط جداً لتفادي مشكلة مساحة Firebase (1 ميجابايت)
+        function compressImageFile(file, maxWidth = 400, quality = 0.4) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = function(event) {
@@ -858,21 +861,30 @@
         let unsubscribeData = null;
         window.currentIssueImage = null; 
         let lastPendingSaveTime = 0;
-        // Prevent an older Firestore snapshot from overwriting newer local changes.
-        let localStateUpdatedAt = Number(localStorage.getItem('gmg_state_updated') || 0);
-        let saveQueue = Promise.resolve();
         const notifiedEventIds = new Set();
         let isInitialSnapshotLoad = true;
 
+        // دالة تنظيف ومسح البيانات القديمة لضمان عدم تخطي قاعدة بيانات فايربيز لحد 1 ميجا
         function sanitizeForFirestore(obj) {
+            // الحد من حجم المصفوفات (Arrays Truncation)
+            if (obj.alerts && obj.alerts.length > 40) obj.alerts = obj.alerts.slice(0, 40);
+            if (obj.events && obj.events.length > 40) obj.events = obj.events.slice(0, 40);
+            
+            if (obj.dailyInspections) {
+                for (let key in obj.dailyInspections) {
+                    if (obj.dailyInspections[key] && obj.dailyInspections[key].length > 20) {
+                        obj.dailyInspections[key] = obj.dailyInspections[key].slice(-20);
+                    }
+                }
+            }
+
             return JSON.parse(JSON.stringify(obj, (key, value) => value === undefined ? "" : value));
         }
 
         function saveState() {
             lastPendingSaveTime = Date.now();
-            localStateUpdatedAt = lastPendingSaveTime;
+            
             localStorage.setItem('gmg_state', JSON.stringify(appState));
-            localStorage.setItem('gmg_state_updated', String(localStateUpdatedAt));
             if (appState.currentUser) {
                 updateBadgesAndDashboard();
                 if (currentFactoryId) renderEquipmentGrid();
@@ -888,12 +900,13 @@
                     dailyInspections: appState.dailyInspections || {},
                     maintenanceCycles: appState.maintenanceCycles || {},
                     pmAssigned: appState.pmAssigned || {},
-                    lastUpdated: localStateUpdatedAt
+                    lastUpdated: lastPendingSaveTime
                 });
+                
                 const docRef = window.firebaseDocFunc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'appState', 'main');
-                // Queue writes so rapid consecutive saves cannot finish out of order.
-                saveQueue = saveQueue.then(() => window.firebaseSetDocFunc(docRef, cleanPayload)).catch(e => {
+                window.firebaseSetDocFunc(docRef, cleanPayload).catch(e => {
                     console.error("Background Firestore sync error:", e);
+                    showToast("⚠️ تحذير: فشلت المزامنة. قد تكون البيانات المرفقة (مثل الصور) كبيرة جداً.", "danger");
                 });
             }
         }
@@ -914,17 +927,7 @@
                             isInitialSnapshotLoad = false;
                         }
 
-                        const remoteUpdatedAt = Number(data.lastUpdated || 0);
-
-                        // Ignore stale snapshots. This is the main fix for data that appears
-                        // for a moment and then disappears, or resolved issues returning.
-                        if (remoteUpdatedAt < localStateUpdatedAt) {
-                            console.log('Ignoring stale Firestore snapshot', { remoteUpdatedAt, localStateUpdatedAt });
-                            return;
-                        }
-
-                        // Our own already-applied write does not need to replace local state.
-                        if (remoteUpdatedAt === localStateUpdatedAt && localStateUpdatedAt > 0) {
+                        if (Date.now() - lastPendingSaveTime < 1800 && snapshot.metadata?.hasPendingWrites) {
                             return;
                         }
 
@@ -961,9 +964,7 @@
                             maintenanceCycles: data.maintenanceCycles || {},
                             pmAssigned: data.pmAssigned || {}
                         };
-                        localStateUpdatedAt = remoteUpdatedAt || localStateUpdatedAt;
                         localStorage.setItem('gmg_state', JSON.stringify(appState));
-                        localStorage.setItem('gmg_state_updated', String(localStateUpdatedAt));
                     } else { 
                         isInitialSnapshotLoad = false;
                         saveState(); 
@@ -1007,7 +1008,6 @@
                 try { 
                     const parsed = JSON.parse(localState);
                     appState = { ...defaultData, ...parsed };
-                    localStateUpdatedAt = Number(localStorage.getItem('gmg_state_updated') || 0);
                     (appState.events || []).forEach(ev => notifiedEventIds.add(ev.id));
                 } catch(e) {}
             }
@@ -1045,7 +1045,7 @@
             };
             if (!appState.events) appState.events = [];
             appState.events.unshift(newEvent);
-            if (appState.events.length > 40) appState.events.pop();
+            if (appState.events.length > 40) appState.events.length = 40; // Truncate
         }
 
         function getPendingTasks(equipId) {
@@ -1573,6 +1573,7 @@
             if(!appState.dailyInspections[id]) appState.dailyInspections[id] = [];
             
             appState.dailyInspections[id].push(record);
+            if (appState.dailyInspections[id].length > 20) appState.dailyInspections[id] = appState.dailyInspections[id].slice(-20);
 
             if(details) logEvent('daily_insp', `${details.equipment.name} (${details.factory.name})`, id);
             
@@ -1587,7 +1588,7 @@
             riImageElem.addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file) {
-                    window.currentIssueImage = await compressImageFile(file, 600, 0.55);
+                    window.currentIssueImage = await compressImageFile(file, 400, 0.4);
                     const preview = document.getElementById('ri-image-preview');
                     const removeBtn = document.getElementById('ri-remove-image');
                     if(preview) { preview.src = window.currentIssueImage; preview.classList.remove('hidden'); }
@@ -1640,7 +1641,11 @@
                     status: 'open', user: appState.currentUser.name,
                     date: new Date().toISOString()
                 };
+                
+                if (!appState.alerts) appState.alerts = [];
                 appState.alerts.unshift(alert);
+                if (appState.alerts.length > 40) appState.alerts.length = 40; // Truncate to save Firebase space
+                
                 logEvent('issue', `${details.equipment.name} (${details.factory.name}) - ${desc.substring(0, 35)}`, id, alert.id);
                 
                 closeModal(); 
