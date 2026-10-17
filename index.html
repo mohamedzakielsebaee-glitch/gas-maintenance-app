@@ -18,7 +18,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCnCxBurG8x82dgCLIbps-3yUk9P7FgK6k",
@@ -50,7 +50,10 @@
         window.firebaseOnSnapshotFunc = onSnapshot;
         window.firebaseSignInEmailFunc = signInWithEmailAndPassword;
         window.firebaseSignOut = signOut;
-        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk'; // من Firebase Console > Project settings > Cloud Messaging > Web Push certificates
+        window.firebaseCollection = collection;
+        window.firebaseGetDocs = getDocs;
+
+        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk';
         window.gmgGetPushToken = async (reg) => {
             if (!VAPID_KEY) return false;
             try {
@@ -60,21 +63,23 @@
                 const u = (typeof appState !== 'undefined' && appState.currentUser) || {};
                 await setDoc(doc(db, 'artifacts', window.appId, 'public', 'data', 'fcmTokens', token.slice(-40)), { token, userId: u.id || '', role: u.role || '', updated: Date.now() });
                 return true;
-            } catch (e) { console.error('push', e); return false; }
+            } catch (e) { console.error('push token err', e); return false; }
         };
 
         window.firebaseReady = new Promise(async (resolve) => {
             onAuthStateChanged(auth, async (user) => {
                 if (user) { 
                     window.firebaseUser = user; 
+                    window.firebaseOfflineMode = false;
                     resolve(true); 
                 } else {
                     try {
                         const cred = await signInAnonymously(auth);
                         window.firebaseUser = cred.user;
+                        window.firebaseOfflineMode = false;
                         resolve(true);
                     } catch (err) {
-                        console.error("Forced Anonymous auth error:", err);
+                        console.error("Firebase Auth Error (Enable Anonymous Auth!):", err);
                         window.firebaseOfflineMode = true;
                         resolve(false);
                     }
@@ -194,8 +199,9 @@
                         <i class="fas fa-bars text-xl"></i>
                     </button>
                     <h1 id="currentViewTitle" class="text-lg md:text-xl font-bold text-slate-800 truncate">لوحة التحكم الرئيسية</h1>
-                    <span id="connectionBadge" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> متصل بالسحابة
+                    <!-- كاشف حالة المزامنة اللحظي -->
+                    <span id="connectionBadge" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                        <i class="fas fa-spinner fa-spin"></i> جاري الاتصال...
                     </span>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-3">
@@ -223,7 +229,6 @@
 
         <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 md:p-6" id="mainContent">
             
-            <!-- Skeleton Loader -->
             <div id="skeleton-loader" class="space-y-6 animate-pulse">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-slate-200 h-24 rounded-xl"></div>
@@ -406,7 +411,6 @@
             
             <div class="p-5 overflow-y-auto flex-1 custom-scrollbar">
                 
-                <!-- PM Checklist Form -->
                 <div id="form-pm" class="hidden-view space-y-4">
                     <input type="hidden" id="pm-equipId">
                     <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg flex items-start gap-3">
@@ -420,7 +424,6 @@
                     </div>
                 </div>
 
-                <!-- Inspection History View -->
                 <div id="view-inspection-history" class="hidden-view space-y-4">
                     <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <div>
@@ -447,7 +450,6 @@
                     </div>
                 </div>
 
-                <!-- Daily Inspection Form -->
                 <form id="form-daily-inspection" class="hidden-view space-y-4">
                     <input type="hidden" id="di-equipId">
                     <button type="button" onclick="backToInspectionHistory()" class="text-primary text-sm font-bold flex items-center gap-1 mb-2 hover:underline">
@@ -461,7 +463,6 @@
                     <button type="submit" class="w-full bg-success hover:bg-green-700 text-white font-bold py-2.5 rounded-lg transition shadow-md" data-i18n="save_inspection">حفظ الفحص</button>
                 </form>
 
-                <!-- Update Hours & 4000h Maintenance History Modal View -->
                 <div id="view-hours-management" class="hidden-view space-y-4">
                     <input type="hidden" id="uh-equipId">
                     <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
@@ -491,7 +492,6 @@
                     </div>
                 </div>
 
-                <!-- Issue Reporting Form -->
                 <form id="form-report-issue" class="hidden-view space-y-4">
                     <input type="hidden" id="ri-equipId">
                     <div class="bg-red-50 p-3 rounded-lg border border-red-200 text-red-800 text-sm mb-2 flex gap-2">
@@ -522,10 +522,9 @@
                     </button>
                 </form>
 
-                <!-- Issue Details Viewer Modal -->
                 <div id="view-issue-details" class="hidden-view space-y-4">
                     <input type="hidden" id="vi-alertId">
-                    <div id="vi-status-banner" class="p-3 rounded-lg text-sm font-bold flex items-center justify-between">
+                    <div id="vi-status-banner" class="p-3 rounded-lg text-sm font-bold flex flex-col gap-2">
                     </div>
                     <div class="bg-red-50 p-4 rounded-xl border border-red-200">
                         <div class="flex justify-between items-start mb-2">
@@ -540,15 +539,13 @@
                     </div>
                     <div class="flex justify-between items-center pt-2 border-t">
                         <span class="text-xs text-slate-500">المُبلغ: <strong id="vi-user" class="text-slate-800"></strong></span>
-                        <div class="flex gap-2" id="vi-action-buttons">
-                            <button onclick="closeModal()" class="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-xs font-bold transition">إغلاق</button>
-                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t" id="vi-action-buttons">
                     </div>
                 </div>
 
                 <div id="view-list-panel" class="hidden-view"><div id="list-panel-body" class="space-y-3"></div></div>
 
-                <!-- نافذة تصدير وتحميل التقارير الجاهزة (لضمان عمل التصدير في كافة المتصفحات والمعاينات) -->
                 <div id="view-export-preview" class="hidden-view space-y-4">
                     <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between gap-3">
                         <div class="flex items-center gap-2.5">
@@ -571,7 +568,6 @@
                     </div>
                 </div>
 
-                <!-- نافذة تعليمات تثبيت التطبيق على الهاتف -->
                 <div id="view-pwa-guide" class="hidden-view space-y-4 text-center py-2">
                     <div class="w-20 h-20 mx-auto rounded-2xl shadow-lg border-2 border-amber-400 overflow-hidden bg-primary flex items-center justify-center">
                         <img id="pwa-guide-icon" src="" class="w-full h-full object-cover" alt="App Icon">
@@ -616,7 +612,7 @@
                 emp_id: "الرقم الوظيفي", password: "كلمة المرور", login_btn: "تسجيل الدخول", logout: "تسجيل الخروج",
                 total_factories: "إجمالي المصانع", maintenance_due: "معدات تحتاج صيانة", active_issues: "بلاغات نشطة",
                 select_factory: "اختر مصنع للبدء", recent_alerts: "سجل الأنشطة والفعاليات الشامل", admin_panel: "لوحة تحكم المشرف",
-                admin_desc: "إدارة بنود الصيانة الدورية (PM) لكل معدة.", manage_pm: "إدارة بنود الصيانة (PM)",
+                admin_desc: "إدارة بنود الصيانة الدورية (PM)، وتصدير التقارير، وإضافة المعدات.", manage_pm: "إدارة بنود الصيانة (PM)",
                 select_factory_admin: "اختر المصنع", select_equip: "اختر المعدة", alerts_log: "سجل الإشعارات الشامل",
                 save_inspection: "حفظ الفحص", current_hours: "ساعات التشغيل الحالية", update_btn: "تحديث",
                 alert_warning: "سيتم إرسال هذا التنبيه لجميع الفنيين فوراً.", issue_desc: "وصف المشكلة دقيقاً", attach_image: "إرفاق صورة",
@@ -709,7 +705,6 @@
         window.toggleSound = function() { soundOn = !soundOn; localStorage.setItem('gmg_sound', soundOn ? 'on' : 'off'); updateSoundIcon(); if (soundOn) playAlertSound('success'); };
         function updateSoundIcon() { const i = document.getElementById('soundIcon'); if (i) i.className = 'fas text-xl ' + (soundOn ? 'fa-volume-high' : 'fa-volume-xmark text-slate-300'); }
 
-        // ---- إشعارات النظام (تعمل والتطبيق في الخلفية؛ ومع Cloud Function تعمل والتطبيق مغلق) ----
         async function gmgRegisterSW() { if (!('serviceWorker' in navigator)) return null; try { return await navigator.serviceWorker.register('./firebase-messaging-sw.js', {scope: './'}); } catch (e) { console.warn('FCM service worker registration failed', e); return null; } }
         function updatePushBtn() { const b = document.getElementById('pushBtn'); if (b) b.classList.toggle('hidden', !('Notification' in window) || Notification.permission === 'granted'); }
         async function initPush() {
@@ -733,6 +728,29 @@
             if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
             const o = { body, tag, icon: document.getElementById('pwa-favicon')?.href, vibrate: [300,100,300], dir: 'rtl', lang: 'ar' };
             navigator.serviceWorker?.getRegistration().then(r => r ? r.showNotification(title, o) : new Notification(title, o));
+        }
+
+        async function sendExternalWebhook(type, title, details) {
+            const webhookUrl = "https://script.google.com/macros/s/AKfycbyx4h9k1ymrReD_QSWDx04afbuN940OtgRzS-wzZh8vvbMN83jfOK5UWk4RRUPdhMBtWg/exec";
+            let fcmTokens = [];
+            try {
+                if (window.firebaseCollection && window.firebaseDb && !window.firebaseOfflineMode) {
+                    const colRef = window.firebaseCollection(window.firebaseDb, 'artifacts/' + window.appId + '/public/data/fcmTokens');
+                    const snap = await window.firebaseGetDocs(colRef);
+                    snap.forEach(d => { if(d.data().token) fcmTokens.push(d.data().token); });
+                }
+            } catch(e) { console.log('Error fetching tokens'); }
+
+            try {
+                const u = appState.currentUser || { name: 'النظام', id: 'SYS' };
+                const finalTokens = [...new Set(fcmTokens)];
+                fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ event_type: type, title: title, details: details, user_name: `${u.name} (${u.id})`, tokens: finalTokens }),
+                    mode: 'no-cors'
+                });
+            } catch(e) {}
         }
 
         function compressImageFile(file, maxWidth = 600, quality = 0.55) {
@@ -868,13 +886,17 @@
         function saveState() {
             lastPendingSaveTime = Date.now();
             
+            // Limit arrays to prevent hitting 1MB Firebase limit
+            appState.alerts = (appState.alerts || []).slice(0, 30);
+            appState.events = (appState.events || []).slice(0, 40);
+
             localStorage.setItem('gmg_state', JSON.stringify(appState));
             if (appState.currentUser) {
                 updateBadgesAndDashboard();
                 if (currentFactoryId) renderEquipmentGrid();
             }
 
-            if (isOnline && window.firebaseUser) {
+            if (isOnline && window.firebaseUser && !window.firebaseOfflineMode) {
                 const cleanPayload = sanitizeForFirestore({
                     pmTemplates: appState.pmTemplates || {},
                     factories: appState.factories || defaultData.factories,
@@ -886,15 +908,24 @@
                     pmAssigned: appState.pmAssigned || {},
                     lastUpdated: lastPendingSaveTime
                 });
+                
                 const docRef = window.firebaseDocFunc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'appState', 'main');
-                window.firebaseSetDocFunc(docRef, cleanPayload).catch(e => {
-                    console.error("Background Firestore sync error:", e);
+                window.firebaseSetDocFunc(docRef, cleanPayload, { merge: true })
+                .then(() => {
+                    document.getElementById('connectionBadge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> تم الحفظ سحابياً';
+                    document.getElementById('connectionBadge').className = 'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200';
+                })
+                .catch(e => {
+                    console.error("Firestore sync error:", e);
+                    document.getElementById('connectionBadge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> خطأ مزامنة';
+                    document.getElementById('connectionBadge').className = 'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200';
+                    showToast('خطأ: لم يتم حفظ البيانات في السحابة! تحقق من صلاحيات Firebase.', 'danger');
                 });
             }
         }
 
         async function loadStateFromFirebase() {
-            if (!window.firebaseUser) return false;
+            if (!window.firebaseUser || window.firebaseOfflineMode) return false;
             try {
                 const docRef = window.firebaseDocFunc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'appState', 'main');
                 unsubscribeData = window.firebaseOnSnapshotFunc(docRef, (snapshot) => {
@@ -923,11 +954,12 @@
                                     else if(latestEvent.action === 'factory_pm_done') actionText = currentLang==='ar'?'أنجز بند صيانة في':'completed PM task in';
                                     else if(latestEvent.action === 'issue') actionText = currentLang==='ar'?'أبلغ عن عطل في':'reported an issue in';
                                     else if(latestEvent.action === 'issue_resolved') actionText = currentLang==='ar'?'أنجز وأصلح عطل في':'resolved issue in';
+                                    else if(latestEvent.action === 'issue_skipped') actionText = currentLang==='ar'?'قام بإحالة/تخطي عطل في':'skipped/transferred issue in';
                                     else if(latestEvent.action === 'hours') actionText = currentLang==='ar'?'حدّث ساعات تشغيل':'updated hours for';
                                     else if(latestEvent.action === 'pm_updated') actionText = currentLang==='ar'?'حدّث بنود الصيانة لـ':'updated PM tasks for';
                                     else if(latestEvent.action === 'cycle_done') actionText = currentLang==='ar'?'سجل صيانة دورة 4000 ساعة لـ':'recorded 4000h maintenance for';
                                     
-                                    const _snd = { issue: 'issue', issue_resolved: 'resolved', cycle_done: 'resolved', factory_pm_done: 'pm', pm_updated: 'pm' }[latestEvent.action] || 'notification';
+                                    const _snd = { issue: 'issue', issue_resolved: 'resolved', cycle_done: 'resolved', factory_pm_done: 'pm', pm_updated: 'pm', issue_skipped: 'notification' }[latestEvent.action] || 'notification';
                                     playAlertSound(_snd);
                                     systemNotify(latestEvent.action === 'issue' ? '🚨 عطل طارئ' : 'Gas Maintenance', `${latestEvent.userName} ${actionText}: ${latestEvent.details}`, latestEvent.id);
                                     showToast(`🔔 ${escapeHTML(latestEvent.userName)} ${actionText}: ${escapeHTML(latestEvent.details)}`, latestEvent.action === 'issue' ? 'danger' : 'info');
@@ -1156,6 +1188,16 @@
             
             const adminBtn = document.getElementById('adminSettingsBtn');
             if (adminBtn) u.role === 'admin' ? adminBtn.classList.remove('hidden') : adminBtn.classList.add('hidden');
+
+            const badge = document.getElementById('connectionBadge');
+            if (isOnline && !window.firebaseOfflineMode) {
+                badge.className = "hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200";
+                badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> متصل بالسحابة';
+            } else {
+                badge.className = "hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200";
+                badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> أوفلاين (تحقق من Firebase)';
+                showToast('⚠️ التطبيق يعمل في وضع الأوفلاين. يرجى التأكد من إعدادات Rules في Firebase.', 'danger');
+            }
 
             initPush(); checkPwaInstalledState();
             setLanguage(currentLang); renderSidebar(); showDashboard();
@@ -1625,11 +1667,97 @@
                 appState.alerts.unshift(alert);
                 logEvent('issue', `${details.equipment.name} (${details.factory.name}) - ${desc.substring(0, 35)}`, id, alert.id);
                 
+                sendExternalWebhook('emergency_issue', '🚨 عطل طارئ جديد', `${details.equipment.name} (${details.factory.name}): ${desc}`);
+
                 closeModal(); 
                 saveState(); 
                 showToast(currentLang==='ar'?'تم إرسال البلاغ العاجل بنجاح':'Urgent issue reported', 'danger');
             }
         });
+
+        window.renderIssueDetailsModal = function(alert) {
+            document.getElementById('vi-alertId').value = alert.id;
+            document.getElementById('vi-equipName').textContent = `${alert.factoryName} - ${alert.equipName}`;
+            document.getElementById('vi-date').textContent = new Date(alert.date).toLocaleString(currentLang==='ar'?'ar-SA':'en-US');
+            document.getElementById('vi-desc').textContent = alert.description;
+            document.getElementById('vi-user').textContent = alert.user;
+
+            const statusBanner = document.getElementById('vi-status-banner');
+            const actionButtons = document.getElementById('vi-action-buttons');
+
+            if (alert.status === 'open') {
+                statusBanner.className = 'p-3 rounded-lg text-sm font-bold flex flex-col gap-2 bg-red-100 text-red-800 border border-red-300';
+                statusBanner.innerHTML = `<span><i class="fas fa-exclamation-circle"></i> حالة البلاغ: عطل نشط قيد الانتظار</span>`;
+                actionButtons.innerHTML = `
+                    <button onclick="resolveIssue('${alert.id}')" class="bg-success hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-1.5 flex-1 justify-center">
+                        <i class="fas fa-check-double"></i> إنجاز وإصلاح العطل
+                    </button>
+                    <button onclick="skipIssue('${alert.id}')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-1.5 flex-1 justify-center">
+                        <i class="fas fa-forward"></i> إحالة / تخطي لزميل
+                    </button>
+                    <button onclick="closeModal()" class="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-xs font-bold transition">إغلاق</button>
+                `;
+            } else {
+                const resDate = alert.resolvedDate ? new Date(alert.resolvedDate).toLocaleString(currentLang==='ar'?'ar-SA':'en-US') : '';
+                if(alert.status === 'skipped') {
+                    statusBanner.className = 'p-3 rounded-lg text-sm font-bold flex flex-col gap-1 bg-amber-100 text-amber-800 border border-amber-300';
+                    statusBanner.innerHTML = `
+                        <span><i class="fas fa-forward"></i> تم الإحالة / التخطي بواسطة: ${escapeHTML(alert.resolvedBy)}</span>
+                        <span class="text-xs font-mono opacity-80" dir="ltr">${resDate}</span>
+                    `;
+                } else {
+                    statusBanner.className = 'p-3 rounded-lg text-sm font-bold flex flex-col gap-1 bg-emerald-100 text-emerald-800 border border-emerald-300';
+                    statusBanner.innerHTML = `
+                        <span><i class="fas fa-check-circle"></i> تم إنجاز العمل بواسطة: ${escapeHTML(alert.resolvedBy || 'فني الصيانة')}</span>
+                        <span class="text-xs font-mono opacity-80" dir="ltr">${resDate}</span>
+                    `;
+                }
+                actionButtons.innerHTML = `
+                    <button onclick="closeModal()" class="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-xs font-bold transition w-full">إغلاق</button>
+                `;
+            }
+
+            const imgContainer = document.getElementById('vi-image-container');
+            const imgEl = document.getElementById('vi-image');
+            if (alert.image) {
+                imgEl.src = alert.image;
+                imgContainer.classList.remove('hidden');
+            } else {
+                imgContainer.classList.add('hidden');
+            }
+
+            openModal('view-issue-details', currentLang==='ar' ? 'تفاصيل بلاغ العطل الطارئ' : 'Urgent Issue Details');
+        };
+
+        window.resolveIssue = function(alertId) {
+            const alert = appState.alerts.find(a => a.id === alertId);
+            if(alert) {
+                const _fl = window._fromList; alert.status = 'resolved';
+                alert.resolvedBy = appState.currentUser.name;
+                alert.resolvedDate = new Date().toISOString();
+                
+                logEvent('issue_resolved', `${alert.equipName} (${alert.factoryName}) - أصلح العطل: ${appState.currentUser.name}`, alert.equipId, alert.id);
+                closeModal();
+                saveState();
+                showToast(currentLang==='ar'?'تم تسجيل إنجاز العمل وإصلاح العطل بنجاح':'Issue successfully resolved', 'success');
+                if (_fl && appState.alerts.some(a => a.status === 'open')) showActiveIssues();
+            }
+        };
+
+        window.skipIssue = function(alertId) {
+            const alert = appState.alerts.find(a => a.id === alertId);
+            if(alert) {
+                const _fl = window._fromList; alert.status = 'skipped';
+                alert.resolvedBy = appState.currentUser.name;
+                alert.resolvedDate = new Date().toISOString();
+                
+                logEvent('issue_skipped', `${alert.equipName} (${alert.factoryName}) - أحال/تخطى العطل: ${appState.currentUser.name}`, alert.equipId, alert.id);
+                closeModal();
+                saveState();
+                showToast(currentLang==='ar'?'تم تخطي البلاغ وتوثيق حالتك':'Issue skipped and recorded', 'info');
+                if (_fl && appState.alerts.some(a => a.status === 'open')) showActiveIssues();
+            }
+        };
 
         window.showAdminSettings = function() {
             hideAllViews(); currentFactoryId = null;
@@ -1736,6 +1864,7 @@
                 loadAdminPmTasks();
                 saveState(); 
                 showToast(currentLang==='ar'?'تم إضافة بند الصيانة':'PM task added', 'success');
+                sendExternalWebhook('pm_added', '🔧 بند صيانة جديد', `${details.equipment.name} (${details.factory.name}): تم إضافة بند صيانة جديد`);
             }
         };
         
@@ -1802,6 +1931,8 @@
                 icon = 'fa-exclamation-triangle'; bg = 'bg-red-50 border-red-200 text-red-800'; title = currentLang==='ar'?'عطل طارئ':'Urgent Issue';
             } else if(ev.action === 'issue_resolved') {
                 icon = 'fa-check-circle'; bg = 'bg-emerald-50 border-emerald-200 text-emerald-800'; title = currentLang==='ar'?'تم إصلاح العطل الطارئ':'Issue Resolved';
+            } else if(ev.action === 'issue_skipped') {
+                icon = 'fa-forward'; bg = 'bg-amber-50 border-amber-200 text-amber-800'; title = currentLang==='ar'?'تم إحالة عطل طارئ':'Issue Skipped';
             } else if(ev.action === 'daily_insp') {
                 icon = 'fa-clipboard-check'; bg = 'bg-blue-50 border-blue-200 text-blue-800'; title = currentLang==='ar'?'فحص يومي':'Daily Inspection';
             } else if(ev.action === 'factory_pm_done') {
@@ -1835,7 +1966,7 @@
             renderEquipmentGrid();
 
             setTimeout(() => {
-                if (action === 'issue' || action === 'issue_resolved') {
+                if (action === 'issue' || action === 'issue_resolved' || action === 'issue_skipped') {
                     let alert = appState.alerts.find(a => a.id === extraId);
                     if (!alert) {
                         const equipAlerts = appState.alerts.filter(a => a.equipId === equipId);
@@ -1856,65 +1987,6 @@
             }, 80);
         };
 
-        window.renderIssueDetailsModal = function(alert) {
-            document.getElementById('vi-alertId').value = alert.id;
-            document.getElementById('vi-equipName').textContent = `${alert.factoryName} - ${alert.equipName}`;
-            document.getElementById('vi-date').textContent = new Date(alert.date).toLocaleString(currentLang==='ar'?'ar-SA':'en-US');
-            document.getElementById('vi-desc').textContent = alert.description;
-            document.getElementById('vi-user').textContent = alert.user;
-
-            const statusBanner = document.getElementById('vi-status-banner');
-            const actionButtons = document.getElementById('vi-action-buttons');
-
-            if (alert.status === 'open') {
-                statusBanner.className = 'p-3 rounded-lg text-sm font-bold flex items-center justify-between bg-red-100 text-red-800 border border-red-300';
-                statusBanner.innerHTML = `<span><i class="fas fa-exclamation-circle"></i> حالة البلاغ: عطل نشط قيد الانتظار</span>`;
-                actionButtons.innerHTML = `
-                    <button onclick="resolveIssue('${alert.id}')" class="bg-success hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-1.5">
-                        <i class="fas fa-check-double"></i> تم إنجاز العمل وإصلاح العطل
-                    </button>
-                    <button onclick="closeModal()" class="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-xs font-bold transition">إغلاق</button>
-                `;
-            } else {
-                const resDate = alert.resolvedDate ? new Date(alert.resolvedDate).toLocaleString(currentLang==='ar'?'ar-SA':'en-US') : '';
-                statusBanner.className = 'p-3 rounded-lg text-sm font-bold flex flex-col sm:flex-row sm:items-center justify-between bg-emerald-100 text-emerald-800 border border-emerald-300 gap-1';
-                statusBanner.innerHTML = `
-                    <span><i class="fas fa-check-circle"></i> تم إنجاز العمل وإصلاح العطل بواسطة: ${escapeHTML(alert.resolvedBy || 'فني الصيانة')}</span>
-                    <span class="text-xs font-mono opacity-80" dir="ltr">${resDate}</span>
-                `;
-                actionButtons.innerHTML = `
-                    <button onclick="closeModal()" class="bg-slate-800 hover:bg-black text-white px-4 py-2 rounded-lg text-xs font-bold transition">إغلاق</button>
-                `;
-            }
-
-            const imgContainer = document.getElementById('vi-image-container');
-            const imgEl = document.getElementById('vi-image');
-            if (alert.image) {
-                imgEl.src = alert.image;
-                imgContainer.classList.remove('hidden');
-            } else {
-                imgContainer.classList.add('hidden');
-            }
-
-            openModal('view-issue-details', currentLang==='ar' ? 'تفاصيل بلاغ العطل الطارئ' : 'Urgent Issue Details');
-        };
-
-        window.resolveIssue = function(alertId) {
-            const alert = appState.alerts.find(a => a.id === alertId);
-            if(alert) {
-                const _fl = window._fromList; alert.status = 'resolved';
-                alert.resolvedBy = appState.currentUser.name;
-                alert.resolvedDate = new Date().toISOString();
-                
-                logEvent('issue_resolved', `${alert.equipName} (${alert.factoryName}) - تم إصلاح العطل بواسطة ${appState.currentUser.name}`, alert.equipId, alert.id);
-                closeModal();
-                saveState();
-                showToast(currentLang==='ar'?'تم تسجيل إنجاز العمل وإصلاح العطل بنجاح':'Issue successfully resolved', 'success');
-                if (_fl && appState.alerts.some(a => a.status === 'open')) showActiveIssues();
-            }
-        };
-
-        // نظام تصدير تقارير Excel الاحترافي والمضمون في كافة المتصفحات وشاشات المعاينة
         function triggerExcelExport(tableHtml, filename, titleText) {
             const fullExcelHtml = `
                 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40" dir="rtl">
@@ -1925,7 +1997,6 @@
             const blob = new Blob(['\uFEFF' + fullExcelHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
             const url = URL.createObjectURL(blob);
 
-            // تهيئة نافذة المعاينة والتحميل المباشر لضمان عمله حتى داخل بيئات المعاينة المحمية
             const directLink = document.getElementById('export-direct-link');
             if (directLink) {
                 directLink.href = url;
@@ -1935,7 +2006,6 @@
             document.getElementById('export-table-wrapper').innerHTML = tableHtml;
             openModal('view-export-preview', titleText);
 
-            // بدء التنزيل الفوري تلقائياً
             try {
                 const tempLink = document.createElement('a');
                 tempLink.href = url;
@@ -2026,7 +2096,7 @@
 
             (appState.alerts || []).forEach(a => {
                 count++;
-                const statusStr = a.status === 'open' ? 'عطل نشط (مفتوح)' : `تم الإصلاح بواسطة (${a.resolvedBy || ''})`;
+                const statusStr = a.status === 'open' ? 'عطل نشط (مفتوح)' : (a.status === 'skipped' ? `تم إحالته/تخطيه بواسطة (${a.resolvedBy || ''})` : `تم الإصلاح بواسطة (${a.resolvedBy || ''})`);
                 rowsHtml += `
                     <tr class="border-b">
                         <td class="p-2 border font-bold text-red-700">عطل طارئ</td>
