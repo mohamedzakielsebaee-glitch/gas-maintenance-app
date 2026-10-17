@@ -18,7 +18,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCnCxBurG8x82dgCLIbps-3yUk9P7FgK6k",
@@ -50,10 +50,7 @@
         window.firebaseOnSnapshotFunc = onSnapshot;
         window.firebaseSignInEmailFunc = signInWithEmailAndPassword;
         window.firebaseSignOut = signOut;
-        window.firebaseCollection = collection;
-        window.firebaseGetDocs = getDocs;
-
-        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk';
+        const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk'; // من Firebase Console > Project settings > Cloud Messaging > Web Push certificates
         window.gmgGetPushToken = async (reg) => {
             if (!VAPID_KEY) return false;
             try {
@@ -63,7 +60,7 @@
                 const u = (typeof appState !== 'undefined' && appState.currentUser) || {};
                 await setDoc(doc(db, 'artifacts', window.appId, 'public', 'data', 'fcmTokens', token.slice(-40)), { token, userId: u.id || '', role: u.role || '', updated: Date.now() });
                 return true;
-            } catch (e) { console.error('push token err', e); return false; }
+            } catch (e) { console.error('push', e); return false; }
         };
 
         window.firebaseReady = new Promise(async (resolve) => {
@@ -77,6 +74,7 @@
                         window.firebaseUser = cred.user;
                         resolve(true);
                     } catch (err) {
+                        console.error("Forced Anonymous auth error:", err);
                         window.firebaseOfflineMode = true;
                         resolve(false);
                     }
@@ -225,6 +223,7 @@
 
         <main class="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 md:p-6" id="mainContent">
             
+            <!-- Skeleton Loader -->
             <div id="skeleton-loader" class="space-y-6 animate-pulse">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-slate-200 h-24 rounded-xl"></div>
@@ -407,6 +406,7 @@
             
             <div class="p-5 overflow-y-auto flex-1 custom-scrollbar">
                 
+                <!-- PM Checklist Form -->
                 <div id="form-pm" class="hidden-view space-y-4">
                     <input type="hidden" id="pm-equipId">
                     <div class="bg-blue-50 border border-blue-200 p-3 rounded-lg flex items-start gap-3">
@@ -420,6 +420,7 @@
                     </div>
                 </div>
 
+                <!-- Inspection History View -->
                 <div id="view-inspection-history" class="hidden-view space-y-4">
                     <div class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <div>
@@ -446,6 +447,7 @@
                     </div>
                 </div>
 
+                <!-- Daily Inspection Form -->
                 <form id="form-daily-inspection" class="hidden-view space-y-4">
                     <input type="hidden" id="di-equipId">
                     <button type="button" onclick="backToInspectionHistory()" class="text-primary text-sm font-bold flex items-center gap-1 mb-2 hover:underline">
@@ -459,6 +461,7 @@
                     <button type="submit" class="w-full bg-success hover:bg-green-700 text-white font-bold py-2.5 rounded-lg transition shadow-md" data-i18n="save_inspection">حفظ الفحص</button>
                 </form>
 
+                <!-- Update Hours & 4000h Maintenance History Modal View -->
                 <div id="view-hours-management" class="hidden-view space-y-4">
                     <input type="hidden" id="uh-equipId">
                     <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center justify-between">
@@ -488,6 +491,7 @@
                     </div>
                 </div>
 
+                <!-- Issue Reporting Form -->
                 <form id="form-report-issue" class="hidden-view space-y-4">
                     <input type="hidden" id="ri-equipId">
                     <div class="bg-red-50 p-3 rounded-lg border border-red-200 text-red-800 text-sm mb-2 flex gap-2">
@@ -518,6 +522,7 @@
                     </button>
                 </form>
 
+                <!-- Issue Details Viewer Modal -->
                 <div id="view-issue-details" class="hidden-view space-y-4">
                     <input type="hidden" id="vi-alertId">
                     <div id="vi-status-banner" class="p-3 rounded-lg text-sm font-bold flex items-center justify-between">
@@ -543,6 +548,7 @@
 
                 <div id="view-list-panel" class="hidden-view"><div id="list-panel-body" class="space-y-3"></div></div>
 
+                <!-- نافذة تصدير وتحميل التقارير الجاهزة (لضمان عمل التصدير في كافة المتصفحات والمعاينات) -->
                 <div id="view-export-preview" class="hidden-view space-y-4">
                     <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between gap-3">
                         <div class="flex items-center gap-2.5">
@@ -565,6 +571,7 @@
                     </div>
                 </div>
 
+                <!-- نافذة تعليمات تثبيت التطبيق على الهاتف -->
                 <div id="view-pwa-guide" class="hidden-view space-y-4 text-center py-2">
                     <div class="w-20 h-20 mx-auto rounded-2xl shadow-lg border-2 border-amber-400 overflow-hidden bg-primary flex items-center justify-center">
                         <img id="pwa-guide-icon" src="" class="w-full h-full object-cover" alt="App Icon">
@@ -609,7 +616,7 @@
                 emp_id: "الرقم الوظيفي", password: "كلمة المرور", login_btn: "تسجيل الدخول", logout: "تسجيل الخروج",
                 total_factories: "إجمالي المصانع", maintenance_due: "معدات تحتاج صيانة", active_issues: "بلاغات نشطة",
                 select_factory: "اختر مصنع للبدء", recent_alerts: "سجل الأنشطة والفعاليات الشامل", admin_panel: "لوحة تحكم المشرف",
-                admin_desc: "إدارة بنود الصيانة الدورية (PM)، وتصدير التقارير، وإضافة المعدات.", manage_pm: "إدارة بنود الصيانة (PM)",
+                admin_desc: "إدارة بنود الصيانة الدورية (PM) لكل معدة.", manage_pm: "إدارة بنود الصيانة (PM)",
                 select_factory_admin: "اختر المصنع", select_equip: "اختر المعدة", alerts_log: "سجل الإشعارات الشامل",
                 save_inspection: "حفظ الفحص", current_hours: "ساعات التشغيل الحالية", update_btn: "تحديث",
                 alert_warning: "سيتم إرسال هذا التنبيه لجميع الفنيين فوراً.", issue_desc: "وصف المشكلة دقيقاً", attach_image: "إرفاق صورة",
@@ -702,6 +709,7 @@
         window.toggleSound = function() { soundOn = !soundOn; localStorage.setItem('gmg_sound', soundOn ? 'on' : 'off'); updateSoundIcon(); if (soundOn) playAlertSound('success'); };
         function updateSoundIcon() { const i = document.getElementById('soundIcon'); if (i) i.className = 'fas text-xl ' + (soundOn ? 'fa-volume-high' : 'fa-volume-xmark text-slate-300'); }
 
+        // ---- إشعارات النظام (تعمل والتطبيق في الخلفية؛ ومع Cloud Function تعمل والتطبيق مغلق) ----
         async function gmgRegisterSW() { if (!('serviceWorker' in navigator)) return null; try { return await navigator.serviceWorker.register('./firebase-messaging-sw.js', {scope: './'}); } catch (e) { console.warn('FCM service worker registration failed', e); return null; } }
         function updatePushBtn() { const b = document.getElementById('pushBtn'); if (b) b.classList.toggle('hidden', !('Notification' in window) || Notification.permission === 'granted'); }
         async function initPush() {
@@ -725,38 +733,6 @@
             if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
             const o = { body, tag, icon: document.getElementById('pwa-favicon')?.href, vibrate: [300,100,300], dir: 'rtl', lang: 'ar' };
             navigator.serviceWorker?.getRegistration().then(r => r ? r.showNotification(title, o) : new Notification(title, o));
-        }
-
-        // دالة إرسال الإشعارات الصامتة (مخفية ومبرمجة داخلياً للعمل فوراً)
-        async function sendExternalWebhook(type, title, details) {
-            const webhookUrl = "https://script.google.com/macros/s/AKfycbyx4h9k1ymrReD_QSWDx04afbuN940OtgRzS-wzZh8vvbMN83jfOK5UWk4RRUPdhMBtWg/exec";
-            
-            let fcmTokens = [];
-            try {
-                if (window.firebaseCollection && window.firebaseDb) {
-                    const colRef = window.firebaseCollection(window.firebaseDb, 'artifacts/' + window.appId + '/public/data/fcmTokens');
-                    const snap = await window.firebaseGetDocs(colRef);
-                    snap.forEach(d => { if(d.data().token) fcmTokens.push(d.data().token); });
-                }
-            } catch(e) { console.log('Error fetching tokens'); }
-
-            try {
-                const u = appState.currentUser || { name: 'النظام', id: 'SYS' };
-                const finalTokens = [...new Set(fcmTokens)];
-                
-                fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({
-                        event_type: type,
-                        title: title,
-                        details: details,
-                        user_name: `${u.name} (${u.id})`,
-                        tokens: finalTokens
-                    }),
-                    mode: 'no-cors'
-                });
-            } catch(e) {}
         }
 
         function compressImageFile(file, maxWidth = 600, quality = 0.55) {
@@ -1649,9 +1625,6 @@
                 appState.alerts.unshift(alert);
                 logEvent('issue', `${details.equipment.name} (${details.factory.name}) - ${desc.substring(0, 35)}`, id, alert.id);
                 
-                // الاستدعاء المباشر لسيرفر الإشعارات المخفي
-                sendExternalWebhook('emergency_issue', '🚨 عطل طارئ جديد', `${details.equipment.name} (${details.factory.name}): ${desc}`);
-
                 closeModal(); 
                 saveState(); 
                 showToast(currentLang==='ar'?'تم إرسال البلاغ العاجل بنجاح':'Urgent issue reported', 'danger');
@@ -1759,9 +1732,6 @@
                 const details = getEquipmentDetails(equipId);
                 logEvent('pm_updated', `${details.equipment.name} (${details.factory.name}) - أضاف بند: ${input.value.trim()}`, equipId);
                 
-                // الاستدعاء المباشر لسيرفر الإشعارات المخفي
-                sendExternalWebhook('new_pm_task', '📋 بند صيانة جديد من المشرف', `${details.equipment.name} (${details.factory.name}): ${input.value.trim()}`);
-
                 input.value = ''; 
                 loadAdminPmTasks();
                 saveState(); 
@@ -1944,6 +1914,7 @@
             }
         };
 
+        // نظام تصدير تقارير Excel الاحترافي والمضمون في كافة المتصفحات وشاشات المعاينة
         function triggerExcelExport(tableHtml, filename, titleText) {
             const fullExcelHtml = `
                 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40" dir="rtl">
@@ -1954,6 +1925,7 @@
             const blob = new Blob(['\uFEFF' + fullExcelHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
             const url = URL.createObjectURL(blob);
 
+            // تهيئة نافذة المعاينة والتحميل المباشر لضمان عمله حتى داخل بيئات المعاينة المحمية
             const directLink = document.getElementById('export-direct-link');
             if (directLink) {
                 directLink.href = url;
@@ -1963,6 +1935,7 @@
             document.getElementById('export-table-wrapper').innerHTML = tableHtml;
             openModal('view-export-preview', titleText);
 
+            // بدء التنزيل الفوري تلقائياً
             try {
                 const tempLink = document.createElement('a');
                 tempLink.href = url;
