@@ -18,7 +18,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, query, orderBy, limit, where, writeBatch, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCnCxBurG8x82dgCLIbps-3yUk9P7FgK6k",
@@ -52,6 +52,7 @@
         window.firebaseSignOut = signOut;
         window.firebaseCollection = collection;
         window.firebaseGetDocs = getDocs;
+        window.fb = { db, doc, setDoc, getDoc, deleteDoc, onSnapshot, collection, getDocs, query, orderBy, limit, where, writeBatch, arrayUnion, arrayRemove };
 
         const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk';
         window.gmgGetPushToken = async (reg) => {
@@ -883,148 +884,377 @@
             return JSON.parse(JSON.stringify(obj, (key, value) => value === undefined ? "" : value));
         }
 
-        function saveState() {
-            lastPendingSaveTime = Date.now();
-            
-            // Limit arrays to prevent hitting 1MB Firebase limit
-            appState.alerts = (appState.alerts || []).slice(0, 30);
-            appState.events = (appState.events || []).slice(0, 40);
+        /* ===================================================================
+           طبقة البيانات الموزّعة (Firestore) - الحل الجذري لمشكلة حد 1MB
+           بدل مستند واحد ضخم أصبح كل سجل مستنداً مستقلاً:
+             cfg/factories                    هيكل المصانع والأقسام والمعدات
+             cfg/meta                         علامة اكتمال ترحيل البيانات القديمة
+             hours/{equipId}                  ساعات التشغيل
+             pm/{equipId}                     بنود الصيانة + آخر إنجاز لكل بند
+             alerts/{id}                      البلاغات (الصورة في alertImages/{id})
+             events/{id}                      سجل النشاط
+             eq/{equipId}/inspections/{id}    الفحوصات اليومية
+             eq/{equipId}/pmLogs/{id}         سجل إنجاز بنود الصيانة
+             eq/{equipId}/cycles/{id}         دورات الـ 4000 ساعة
+           كل إضافة = كتابة مستند جديد (لا تعارض بين الفنيين ولا حد للحجم).
+           =================================================================== */
+        const GMG = (function () {
+            const F = () => window.fb;
+            const root = () => ['artifacts', window.appId, 'public', 'data'];
+            const col = (...p) => F().collection(F().db, ...root(), ...p);
+            const dref = (...p) => F().doc(F().db, ...root(), ...p);
+            const clean = (o) => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? "" : v));
+            const hashTask = (s) => {
+                s = String(s); let h = 2166136261;
+                for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+                return 't' + (h >>> 0).toString(36) + s.length.toString(36);
+            };
+            const eachEq = (fs, fn) => (fs || []).forEach(fa => (fa.departments || []).forEach(d => (d.equipment || []).forEach(e => fn(e, fa, d))));
+            const stripHours = (factories) => { const c = JSON.parse(JSON.stringify(factories)); eachEq(c, e => { e.hours = 0; }); return c; };
 
-            localStorage.setItem('gmg_state', JSON.stringify(appState));
+            const raw = { factories: null, hours: {}, pm: {}, alertsRecent: [], alertsOpen: [] };
+            let unsubs = [];
+            const eqUnsubs = {};
+            const imgCache = {};
+
+            function rebuildFactories() {
+                const f = JSON.parse(JSON.stringify(raw.factories || defaultData.factories));
+                eachEq(f, e => { const h = raw.hours[e.id]; e.hours = (h !== undefined) ? h : (Number(e.hours) || 0); });
+                appState.factories = f;
+            }
+            function rebuildPm() {
+                const t = {}, a = {}, l = {};
+                Object.keys(raw.pm).forEach(id => {
+                    const d = raw.pm[id] || {};
+                    t[id] = Array.isArray(d.tasks) ? d.tasks.slice() : [];
+                    a[id] = {}; Object.values(d.assigned || {}).forEach(x => { if (x && x.task) a[id][x.task] = x.at; });
+                    l[id] = Object.values(d.lastDone || {}).filter(x => x && x.task).map(x => ({ task: x.task, date: x.date, byUser: x.byUser, byUserId: x.byUserId }));
+                });
+                appState.pmTemplates = t; appState.pmAssigned = a; appState.factoryPmLogs = l;
+            }
+            function rebuildAlerts() {
+                const m = {};
+                raw.alertsOpen.concat(raw.alertsRecent).forEach(a => { if (a && a.id) m[a.id] = a; });
+                appState.alerts = Object.values(m).sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')));
+            }
+
+            function stop() {
+                unsubs.forEach(u => { try { u(); } catch (e) {} }); unsubs = [];
+                Object.keys(eqUnsubs).forEach(k => { try { eqUnsubs[k](); } catch (e) {} delete eqUnsubs[k]; });
+            }
+
+            function start(h) {
+                stop();
+                const f = F();
+                const err = (name) => (e) => { console.error('Firestore listen error [' + name + ']:', e); if (h.onError) h.onError(name, e); };
+                unsubs.push(f.onSnapshot(dref('cfg', 'factories'), (s) => {
+                    raw.factories = s.exists() ? (s.data().factories || null) : null;
+                    rebuildFactories(); h.onChange('factories');
+                }, err('factories')));
+                unsubs.push(f.onSnapshot(col('hours'), (s) => {
+                    const m = {}; s.forEach(d => { m[d.id] = Number(d.data().hours) || 0; });
+                    raw.hours = m; rebuildFactories(); h.onChange('hours');
+                }, err('hours')));
+                unsubs.push(f.onSnapshot(col('pm'), (s) => {
+                    const m = {}; s.forEach(d => { m[d.id] = d.data(); });
+                    raw.pm = m; rebuildPm(); h.onChange('pm');
+                }, err('pm')));
+                unsubs.push(f.onSnapshot(f.query(col('alerts'), f.orderBy('date', 'desc'), f.limit(150)), (s) => {
+                    raw.alertsRecent = s.docs.map(d => d.data()); rebuildAlerts(); h.onChange('alerts');
+                }, err('alerts')));
+                unsubs.push(f.onSnapshot(f.query(col('alerts'), f.where('status', '==', 'open')), (s) => {
+                    raw.alertsOpen = s.docs.map(d => d.data()); rebuildAlerts(); h.onChange('alerts');
+                }, err('alertsOpen')));
+                unsubs.push(f.onSnapshot(f.query(col('events'), f.orderBy('time', 'desc'), f.limit(40)), (s) => {
+                    appState.events = s.docs.map(d => d.data());
+                    if (h.onEvents) h.onEvents(s);
+                    h.onChange('events');
+                }, err('events')));
+            }
+
+            /* ---------- ترحيل لمرة واحدة من المستند القديم appState/main + استرجاع بيانات الأجهزة ---------- */
+            async function migrate() {
+                const f = F();
+                const metaRef = dref('cfg', 'meta');
+                const metaSnap = await f.getDoc(metaRef);
+                const rawLocal = localStorage.getItem('gmg_state');
+                const needGlobal = !metaSnap.exists();
+                const needLocal = !!rawLocal && !localStorage.getItem('gmg_mig_v2_local');
+                if (!needGlobal && !needLocal) return { skipped: true };
+
+                const legacySnap = await f.getDoc(dref('appState', 'main'));
+                const legacy = legacySnap.exists() ? legacySnap.data() : {};
+                let local = null;
+                if (needLocal) { try { local = JSON.parse(rawLocal); } catch (e) { local = null; } }
+
+                const factoriesBase = JSON.parse(JSON.stringify((legacy.factories && legacy.factories.length) ? legacy.factories : defaultData.factories));
+                let cloudFactories = factoriesBase;
+                const baseHours = {};
+                const ops = [];
+                let factoriesChanged = needGlobal;
+
+                if (needGlobal) {
+                    eachEq(factoriesBase, e => { baseHours[e.id] = Number(e.hours) || 0; });
+                    eachEq(factoriesBase, e => { if (baseHours[e.id] > 0) ops.push({ ref: dref('hours', e.id), data: { hours: baseHours[e.id], updatedAt: Date.now(), by: 'migration' } }); });
+                } else {
+                    const fs = await f.getDoc(dref('cfg', 'factories'));
+                    cloudFactories = (fs.exists() && fs.data().factories) ? fs.data().factories : factoriesBase;
+                    const hs = await f.getDocs(col('hours'));
+                    hs.forEach(d => { baseHours[d.id] = Number(d.data().hours) || 0; });
+                }
+
+                // معدات وساعات أُضيفت/حُدِّثت على جهاز محلي بعد توقف المزامنة
+                if (local) {
+                    const legacyEq = new Set(); eachEq(legacy.factories || defaultData.factories, e => legacyEq.add(e.id));
+                    const have = new Set(); eachEq(cloudFactories, e => have.add(e.id));
+                    eachEq(local.factories, (le, lf, ld) => {
+                        if (have.has(le.id) || legacyEq.has(le.id)) return;
+                        const cf = cloudFactories.find(x => x.id === lf.id);
+                        const cd = cf && (cf.departments || []).find(x => x.id === ld.id);
+                        if (cd) { cd.equipment = cd.equipment || []; cd.equipment.push({ ...le }); have.add(le.id); factoriesChanged = true; }
+                    });
+                    eachEq(local.factories, le => {
+                        const lh = Number(le.hours) || 0;
+                        if (have.has(le.id) && lh > (baseHours[le.id] || 0)) ops.push({ ref: dref('hours', le.id), data: { hours: lh, updatedAt: Date.now(), by: 'recovery' } });
+                    });
+                }
+                if (factoriesChanged) ops.push({ ref: dref('cfg', 'factories'), data: { factories: clean(stripHours(cloudFactories)), updatedAt: Date.now() } });
+
+                const valid = new Set(); eachEq(cloudFactories, e => valid.add(e.id));
+
+                const logId = (l) => 'pl_' + hashTask(l.task) + '_' + new Date(l.date).getTime();
+                const legacyIds = new Set();
+                Object.values(legacy.dailyInspections || {}).forEach(a => (a || []).forEach(r => r && r.id && legacyIds.add(r.id)));
+                Object.values(legacy.maintenanceCycles || {}).forEach(a => (a || []).forEach(r => r && r.id && legacyIds.add(r.id)));
+                Object.values(legacy.factoryPmLogs || {}).forEach(a => (a || []).forEach(l => l && l.task && l.date && legacyIds.add(logId(l))));
+                (legacy.alerts || []).forEach(a => a && a.id && legacyIds.add(a.id));
+
+                const lastByEq = {};
+                const collect = (src, skip) => {
+                    Object.keys(src.dailyInspections || {}).forEach(eq => { if (!valid.has(eq)) return; (src.dailyInspections[eq] || []).forEach(r => { if (r && r.id && !skip.has(r.id)) ops.push({ ref: dref('eq', eq, 'inspections', r.id), data: clean({ ...r, equipId: eq }) }); }); });
+                    Object.keys(src.maintenanceCycles || {}).forEach(eq => { if (!valid.has(eq)) return; (src.maintenanceCycles[eq] || []).forEach(c => { if (c && c.id && !skip.has(c.id)) ops.push({ ref: dref('eq', eq, 'cycles', c.id), data: clean({ ...c, equipId: eq }) }); }); });
+                    Object.keys(src.factoryPmLogs || {}).forEach(eq => {
+                        if (!valid.has(eq)) return;
+                        (src.factoryPmLogs[eq] || []).forEach(l => {
+                            if (!l || !l.task || !l.date) return;
+                            const lid = logId(l); if (skip.has(lid)) return;
+                            ops.push({ ref: dref('eq', eq, 'pmLogs', lid), data: clean({ ...l, equipId: eq }) });
+                            const cur = (lastByEq[eq] = lastByEq[eq] || {}), h = hashTask(l.task);
+                            if (!cur[h] || String(cur[h].date) < String(l.date)) cur[h] = clean(l);
+                        });
+                    });
+                };
+                const pushAlerts = async (src, skip, check) => {
+                    for (const a of (src.alerts || [])) {
+                        if (!a || !a.id || skip.has(a.id) || !valid.has(a.equipId)) continue;
+                        if (check && (await f.getDoc(dref('alerts', a.id))).exists()) continue;
+                        const { image, ...rest } = a;
+                        ops.push({ ref: dref('alerts', a.id), data: clean({ ...rest, hasImage: !!image }) });
+                        if (image) ops.push({ ref: dref('alertImages', a.id), data: { image, alertId: a.id } });
+                    }
+                };
+
+                if (needGlobal) {
+                    collect(legacy, new Set());
+                    await pushAlerts(legacy, new Set(), false);
+                    (legacy.events || []).forEach(ev => { if (ev && ev.id) ops.push({ ref: dref('events', ev.id), data: clean(ev) }); });
+                    const pmIds = new Set([...Object.keys(legacy.pmTemplates || {}), ...Object.keys(legacy.pmAssigned || {}), ...Object.keys(lastByEq)]);
+                    pmIds.forEach(id => {
+                        if (!valid.has(id)) return;
+                        const a = {}; const asg = (legacy.pmAssigned || {})[id] || {};
+                        Object.keys(asg).forEach(t => { a[hashTask(t)] = { task: t, at: asg[t] }; });
+                        ops.push({ ref: dref('pm', id), merge: true, data: clean({ tasks: (legacy.pmTemplates || {})[id] || [], assigned: a, lastDone: lastByEq[id] || {} }) });
+                    });
+                }
+                if (local) {
+                    // سجلات الجهاز المحلي: نجمع آخر إنجاز لكل بند بعد استبعاد ما تم ترحيله
+                    Object.keys(lastByEq).forEach(k => delete lastByEq[k]);
+                    collect(local, legacyIds);
+                    await pushAlerts(local, legacyIds, true);
+                    for (const eq of Object.keys(lastByEq)) {
+                        const ex = needGlobal ? { exists: () => false } : await f.getDoc(dref('pm', eq));
+                        const exLast = (ex.exists() && ex.data().lastDone) || {};
+                        const upd = {};
+                        Object.keys(lastByEq[eq]).forEach(h => { if (!exLast[h] || String(exLast[h].date) < String(lastByEq[eq][h].date)) upd[h] = lastByEq[eq][h]; });
+                        if (Object.keys(upd).length) ops.push({ ref: dref('pm', eq), merge: true, data: { lastDone: upd } });
+                    }
+                    // بنود صيانة أُضيفت محلياً بعد توقف المزامنة (غير موجودة في النسخة القديمة)
+                    Object.keys(local.pmTemplates || {}).forEach(eq => {
+                        if (!valid.has(eq)) return;
+                        const oldT = (legacy.pmTemplates || {})[eq] || [];
+                        const add = (local.pmTemplates[eq] || []).filter(t => !oldT.includes(t));
+                        if (!add.length) return;
+                        const a = {}; add.forEach(t => { a[hashTask(t)] = { task: t, at: ((local.pmAssigned || {})[eq] || {})[t] || new Date().toISOString() }; });
+                        ops.push({ ref: dref('pm', eq), merge: true, data: { tasks: f.arrayUnion(...add), assigned: a } });
+                    });
+                }
+
+                for (let i = 0; i < ops.length; i += 200) {
+                    const b = f.writeBatch(f.db);
+                    ops.slice(i, i + 200).forEach(o => { if (o.merge) b.set(o.ref, o.data, { merge: true }); else b.set(o.ref, o.data); });
+                    await b.commit();
+                }
+                if (needGlobal) await f.setDoc(metaRef, { migratedAt: Date.now(), version: 2, source: 'appState/main' });
+                if (needLocal) localStorage.setItem('gmg_mig_v2_local', '1');
+                return { migrated: ops.length };
+            }
+
+            return {
+                start, stop, migrate,
+                saveFactories: (factories) => F().setDoc(dref('cfg', 'factories'), { factories: clean(stripHours(factories)), updatedAt: Date.now() }),
+                setHours: (equipId, hours, user) => F().setDoc(dref('hours', equipId), { hours: Number(hours) || 0, updatedAt: Date.now(), by: (user && user.name) || '' }),
+                addInspection: (equipId, rec) => F().setDoc(dref('eq', equipId, 'inspections', rec.id), clean({ ...rec, equipId })),
+                addCycle: (equipId, rec) => F().setDoc(dref('eq', equipId, 'cycles', rec.id), clean({ ...rec, equipId })),
+                addPmLog: (equipId, entry) => {
+                    const f = F(), b = f.writeBatch(f.db);
+                    b.set(f.doc(col('eq', equipId, 'pmLogs')), clean({ ...entry, equipId }));
+                    b.set(dref('pm', equipId), { lastDone: { [hashTask(entry.task)]: clean(entry) } }, { merge: true });
+                    return b.commit();
+                },
+                addAlert: (alert) => {
+                    const f = F(), b = f.writeBatch(f.db);
+                    const { image, ...rest } = alert;
+                    b.set(dref('alerts', alert.id), clean({ ...rest, hasImage: !!image }));
+                    if (image) b.set(dref('alertImages', alert.id), { image, alertId: alert.id });
+                    return b.commit();
+                },
+                updateAlert: (id, patch) => F().setDoc(dref('alerts', id), clean(patch), { merge: true }),
+                addEvent: (ev) => F().setDoc(dref('events', ev.id), clean(ev)),
+                addPmTask: (equipId, task) => F().setDoc(dref('pm', equipId), { tasks: F().arrayUnion(task), assigned: { [hashTask(task)]: { task, at: new Date().toISOString() } } }, { merge: true }),
+                removePmTask: (equipId, task) => F().setDoc(dref('pm', equipId), { tasks: F().arrayRemove(task) }, { merge: true }),
+                getAlertImage: async (id) => {
+                    if (imgCache[id]) return imgCache[id];
+                    const s = await F().getDoc(dref('alertImages', id));
+                    const v = s.exists() ? (s.data().image || '') : '';
+                    if (v) imgCache[id] = v;
+                    return v;
+                },
+                watchEquip: (kind, equipId, cb) => {
+                    if (eqUnsubs[kind]) { try { eqUnsubs[kind](); } catch (e) {} }
+                    const f = F();
+                    eqUnsubs[kind] = f.onSnapshot(
+                        f.query(col('eq', equipId, kind), f.orderBy('date', 'desc'), f.limit(300)),
+                        (s) => cb(s.docs.map(d => ({ ...d.data(), id: d.data().id || d.id }))),
+                        (e) => console.error('watch ' + kind + ' error:', e));
+                },
+                fetchAllByEquip: async (kind, equipIds) => {
+                    const out = {}, ids = equipIds.slice();
+                    for (let i = 0; i < ids.length; i += 8) {
+                        await Promise.all(ids.slice(i, i + 8).map(async (id) => {
+                            const s = await F().getDocs(col('eq', id, kind));
+                            if (!s.empty) out[id] = s.docs.map(d => d.data());
+                        }));
+                    }
+                    return out;
+                },
+                fetchAllAlerts: async () => (await F().getDocs(col('alerts'))).docs.map(d => d.data()).sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))),
+                removeEquipmentData: async (equipId) => {
+                    const f = F();
+                    const delAll = async (c) => {
+                        const s = await f.getDocs(c);
+                        for (let i = 0; i < s.docs.length; i += 400) { const b = f.writeBatch(f.db); s.docs.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit(); }
+                    };
+                    await delAll(col('eq', equipId, 'inspections'));
+                    await delAll(col('eq', equipId, 'pmLogs'));
+                    await delAll(col('eq', equipId, 'cycles'));
+                    const as = await f.getDocs(f.query(col('alerts'), f.where('equipId', '==', equipId)));
+                    for (const d of as.docs) { await f.deleteDoc(dref('alertImages', d.id)); await f.deleteDoc(d.ref); }
+                    await f.deleteDoc(dref('hours', equipId));
+                    await f.deleteDoc(dref('pm', equipId));
+                }
+            };
+        })();
+
+        function allEquipIds() {
+            const ids = [];
+            (appState.factories || []).forEach(f => (f.departments || []).forEach(d => (d.equipment || []).forEach(e => ids.push(e.id))));
+            return ids;
+        }
+
+        function setCloudBadge(ok) {
+            const b = document.getElementById('connectionBadge'); if (!b) return;
+            if (ok) {
+                b.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> تم الحفظ سحابياً';
+                b.className = 'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200';
+            } else {
+                b.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> خطأ مزامنة';
+                b.className = 'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200';
+            }
+        }
+
+        function cloudWrite(p) {
+            return Promise.resolve(p).then(() => setCloudBadge(true)).catch((e) => {
+                console.error('Firestore write error:', e);
+                setCloudBadge(false);
+                showToast('خطأ: لم يتم حفظ البيانات في السحابة! (' + (e && e.code ? e.code : 'unknown') + ') تحقق من صلاحيات Firebase.', 'danger');
+            });
+        }
+
+        // لم يعد هناك حفظ لكامل الحالة: كل عملية تكتب سجلها فقط. هذه الدالة تحدّث الواجهة فقط.
+        function saveState() {
             if (appState.currentUser) {
                 updateBadgesAndDashboard();
                 if (currentFactoryId) renderEquipmentGrid();
             }
+        }
 
-            if (isOnline && window.firebaseUser && !window.firebaseOfflineMode) {
-                const cleanPayload = sanitizeForFirestore({
-                    pmTemplates: appState.pmTemplates || {},
-                    factories: appState.factories || defaultData.factories,
-                    alerts: appState.alerts || [],
-                    factoryPmLogs: appState.factoryPmLogs || {},
-                    events: appState.events || [],
-                    dailyInspections: appState.dailyInspections || {},
-                    maintenanceCycles: appState.maintenanceCycles || {},
-                    pmAssigned: appState.pmAssigned || {},
-                    lastUpdated: lastPendingSaveTime
-                });
-                
-                const docRef = window.firebaseDocFunc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'appState', 'main');
-                window.firebaseSetDocFunc(docRef, cleanPayload, { merge: true })
-                .then(() => {
-                    document.getElementById('connectionBadge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> تم الحفظ سحابياً';
-                    document.getElementById('connectionBadge').className = 'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200';
-                })
-                .catch(e => {
-                    console.error("Firestore sync error:", e);
-                    document.getElementById('connectionBadge').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> خطأ مزامنة';
-                    document.getElementById('connectionBadge').className = 'hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200';
-                    showToast('خطأ: لم يتم حفظ البيانات في السحابة! تحقق من صلاحيات Firebase.', 'danger');
-                });
+        function afterDataChange(kind) {
+            const skel = document.getElementById('skeleton-loader');
+            if (skel) skel.classList.add('hidden-view');
+            if (appState.currentUser) { updateBadgesAndDashboard(); if (currentFactoryId) renderEquipmentGrid(); }
+
+            if (!document.getElementById('view-admin').classList.contains('hidden-view')) loadAdminPmTasks();
+            if (kind === 'pm' || kind === 'factories') {
+                if (!document.getElementById('form-pm').classList.contains('hidden-view')) {
+                    const openEquipId = document.getElementById('pm-equipId').value;
+                    if (openEquipId) openEquipPm(openEquipId);
+                }
+            }
+            if (kind === 'alerts' && !document.getElementById('view-issue-details').classList.contains('hidden-view')) {
+                const openAlertId = document.getElementById('vi-alertId').value;
+                if (openAlertId) {
+                    const alert = appState.alerts.find(a => a.id === openAlertId);
+                    if (alert) renderIssueDetailsModal(alert);
+                }
             }
         }
 
-        async function loadStateFromFirebase() {
-            if (!window.firebaseUser || window.firebaseOfflineMode) return false;
-            try {
-                const docRef = window.firebaseDocFunc(window.firebaseDb, 'artifacts', window.appId, 'public', 'data', 'appState', 'main');
-                unsubscribeData = window.firebaseOnSnapshotFunc(docRef, (snapshot) => {
-                    const skel = document.getElementById('skeleton-loader');
-                    if (skel) skel.classList.add('hidden-view');
+        function notifyForEvent(latestEvent) {
+            if (latestEvent.userId === appState.currentUser?.id) return;
+            let actionText = '';
+            if (latestEvent.action === 'daily_insp') actionText = currentLang==='ar'?'أضاف فحصاً يومياً لـ':'added daily insp. for';
+            else if (latestEvent.action === 'factory_pm_done') actionText = currentLang==='ar'?'أنجز بند صيانة في':'completed PM task in';
+            else if (latestEvent.action === 'issue') actionText = currentLang==='ar'?'أبلغ عن عطل في':'reported an issue in';
+            else if (latestEvent.action === 'issue_resolved') actionText = currentLang==='ar'?'أنجز وأصلح عطل في':'resolved issue in';
+            else if (latestEvent.action === 'issue_skipped') actionText = currentLang==='ar'?'قام بإحالة/تخطي عطل في':'skipped/transferred issue in';
+            else if (latestEvent.action === 'hours') actionText = currentLang==='ar'?'حدّث ساعات تشغيل':'updated hours for';
+            else if (latestEvent.action === 'pm_updated') actionText = currentLang==='ar'?'حدّث بنود الصيانة لـ':'updated PM tasks for';
+            else if (latestEvent.action === 'cycle_done') actionText = currentLang==='ar'?'سجل صيانة دورة 4000 ساعة لـ':'recorded 4000h maintenance for';
+            else return;
 
-                    if (snapshot.exists()) {
-                        const data = snapshot.data();
-                        
-                        if (isInitialSnapshotLoad) {
-                            (data.events || []).forEach(ev => notifiedEventIds.add(ev.id));
-                            isInitialSnapshotLoad = false;
-                        }
+            const _snd = { issue: 'issue', issue_resolved: 'resolved', cycle_done: 'resolved', factory_pm_done: 'pm', pm_updated: 'pm', issue_skipped: 'notification' }[latestEvent.action] || 'notification';
+            playAlertSound(_snd);
+            systemNotify(latestEvent.action === 'issue' ? '🚨 عطل طارئ' : 'Gas Maintenance', `${latestEvent.userName} ${actionText}: ${latestEvent.details}`, latestEvent.id);
+            showToast(`🔔 ${escapeHTML(latestEvent.userName)} ${actionText}: ${escapeHTML(latestEvent.details)}`, latestEvent.action === 'issue' ? 'danger' : 'info');
+        }
 
-                        if (Date.now() - lastPendingSaveTime < 1800 && snapshot.metadata?.hasPendingWrites) {
-                            return;
-                        }
-
-                        if (data.events && data.events.length > 0) {
-                            const latestEvent = data.events[0];
-                            if (!notifiedEventIds.has(latestEvent.id)) {
-                                notifiedEventIds.add(latestEvent.id);
-                                if (latestEvent.userId !== appState.currentUser?.id) {
-                                    let actionText = '';
-                                    if(latestEvent.action === 'daily_insp') actionText = currentLang==='ar'?'أضاف فحصاً يومياً لـ':'added daily insp. for';
-                                    else if(latestEvent.action === 'factory_pm_done') actionText = currentLang==='ar'?'أنجز بند صيانة في':'completed PM task in';
-                                    else if(latestEvent.action === 'issue') actionText = currentLang==='ar'?'أبلغ عن عطل في':'reported an issue in';
-                                    else if(latestEvent.action === 'issue_resolved') actionText = currentLang==='ar'?'أنجز وأصلح عطل في':'resolved issue in';
-                                    else if(latestEvent.action === 'issue_skipped') actionText = currentLang==='ar'?'قام بإحالة/تخطي عطل في':'skipped/transferred issue in';
-                                    else if(latestEvent.action === 'hours') actionText = currentLang==='ar'?'حدّث ساعات تشغيل':'updated hours for';
-                                    else if(latestEvent.action === 'pm_updated') actionText = currentLang==='ar'?'حدّث بنود الصيانة لـ':'updated PM tasks for';
-                                    else if(latestEvent.action === 'cycle_done') actionText = currentLang==='ar'?'سجل صيانة دورة 4000 ساعة لـ':'recorded 4000h maintenance for';
-                                    
-                                    const _snd = { issue: 'issue', issue_resolved: 'resolved', cycle_done: 'resolved', factory_pm_done: 'pm', pm_updated: 'pm', issue_skipped: 'notification' }[latestEvent.action] || 'notification';
-                                    playAlertSound(_snd);
-                                    systemNotify(latestEvent.action === 'issue' ? '🚨 عطل طارئ' : 'Gas Maintenance', `${latestEvent.userName} ${actionText}: ${latestEvent.details}`, latestEvent.id);
-                                    showToast(`🔔 ${escapeHTML(latestEvent.userName)} ${actionText}: ${escapeHTML(latestEvent.details)}`, latestEvent.action === 'issue' ? 'danger' : 'info');
-                                }
-                            }
-                        }
-
-                        appState = {
-                            ...appState,
-                            pmTemplates: data.pmTemplates || {},
-                            factories: data.factories || defaultData.factories,
-                            alerts: data.alerts || [],
-                            factoryPmLogs: data.factoryPmLogs || {},
-                            events: data.events || [],
-                            dailyInspections: data.dailyInspections || {},
-                            maintenanceCycles: data.maintenanceCycles || {},
-                            pmAssigned: data.pmAssigned || {}
-                        };
-                        localStorage.setItem('gmg_state', JSON.stringify(appState));
-                    } else { 
-                        isInitialSnapshotLoad = false;
-                        saveState(); 
-                    } 
-                    
-                    if(appState.currentUser) { updateBadgesAndDashboard(); if(currentFactoryId) renderEquipmentGrid(); }
-                    
-                    if(!document.getElementById('view-admin').classList.contains('hidden-view')) loadAdminPmTasks();
-                    if(!document.getElementById('form-pm').classList.contains('hidden-view')) {
-                        const openEquipId = document.getElementById('pm-equipId').value;
-                        if(openEquipId) openEquipPm(openEquipId);
-                    }
-                    if(!document.getElementById('view-inspection-history').classList.contains('hidden-view')) {
-                        const openEquipId = document.getElementById('di-equipId').value;
-                        if(openEquipId) renderInspectionTable(openEquipId);
-                    }
-                    if(!document.getElementById('view-hours-management').classList.contains('hidden-view')) {
-                        const openEquipId = document.getElementById('uh-equipId').value;
-                        if(openEquipId) renderMaintenanceCyclesHistory(openEquipId);
-                    }
-                    if(!document.getElementById('view-issue-details').classList.contains('hidden-view')) {
-                        const openAlertId = document.getElementById('vi-alertId').value;
-                        if(openAlertId) {
-                            const alert = appState.alerts.find(a => a.id === openAlertId);
-                            if(alert) renderIssueDetailsModal(alert);
-                        }
-                    }
-
-                }, (error) => { 
-                    console.error("Firebase listen error:", error); 
-                    const skel = document.getElementById('skeleton-loader');
-                    if (skel) skel.classList.add('hidden-view');
-                });
-                return true;
-            } catch (e) { console.error("Load error:", e); return false; }
+        function onEventsSnapshot(snapshot) {
+            if (isInitialSnapshotLoad) {
+                snapshot.docs.forEach(d => notifiedEventIds.add(d.id));
+                isInitialSnapshotLoad = false;
+                return;
+            }
+            snapshot.docChanges().forEach(ch => {
+                if (ch.type !== 'added') return;
+                const ev = ch.doc.data();
+                if (!ev || notifiedEventIds.has(ev.id)) return;
+                notifiedEventIds.add(ev.id);
+                if (Date.now() - new Date(ev.time).getTime() > 120000) return; // لا إشعارات للأحداث القديمة
+                notifyForEvent(ev);
+            });
         }
 
         async function setupFirebase() {
-            const localState = localStorage.getItem('gmg_state');
-            if (localState) {
-                try { 
-                    const parsed = JSON.parse(localState);
-                    appState = { ...defaultData, ...parsed };
-                    (appState.events || []).forEach(ev => notifiedEventIds.add(ev.id));
-                } catch(e) {}
-            }
             const localUser = localStorage.getItem('gmg_user');
             if (localUser) {
                 try { appState.currentUser = JSON.parse(localUser); } catch(e) {}
@@ -1033,7 +1263,25 @@
             try {
                 await window.firebaseReady;
                 isOnline = !window.firebaseOfflineMode;
-                await loadStateFromFirebase();
+                if (isOnline) {
+                    try {
+                        await Promise.race([GMG.migrate(), new Promise((_, rej) => setTimeout(() => rej(new Error('migration timeout')), 30000))]);
+                    } catch (e) { console.error('Migration error:', e); }
+                    GMG.start({
+                        onChange: afterDataChange,
+                        onEvents: onEventsSnapshot,
+                        onError: (name, e) => {
+                            const skel = document.getElementById('skeleton-loader');
+                            if (skel) skel.classList.add('hidden-view');
+                            if (!window._gmgListenErr) {
+                                window._gmgListenErr = true;
+                                showToast('خطأ في قراءة البيانات (' + (e && e.code ? e.code : name) + '). تحقق من Rules في Firebase.', 'danger');
+                                setCloudBadge(false);
+                            }
+                        }
+                    });
+                    unsubscribeData = () => GMG.stop();
+                }
                 initApp();
             } catch (error) {
                 isOnline = false;
@@ -1047,19 +1295,17 @@
             if (!appState.currentUser) return;
             const evId = 'ev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
             notifiedEventIds.add(evId);
-            const newEvent = { 
-                id: evId, 
-                userId: appState.currentUser.id, 
-                userName: appState.currentUser.name, 
-                action: actionKey, 
-                details: details, 
+            const newEvent = {
+                id: evId,
+                userId: appState.currentUser.id,
+                userName: appState.currentUser.name,
+                action: actionKey,
+                details: details,
                 equipId: equipId,
                 extraId: extraId,
-                time: new Date().toISOString() 
+                time: new Date().toISOString()
             };
-            if (!appState.events) appState.events = [];
-            appState.events.unshift(newEvent);
-            if (appState.events.length > 40) appState.events.pop();
+            cloudWrite(GMG.addEvent(newEvent));
         }
 
         function getPendingTasks(equipId) {
@@ -1113,6 +1359,7 @@
             ['pmTemplates', 'factoryPmLogs', 'dailyInspections', 'maintenanceCycles', 'pmAssigned'].forEach(k => { if (appState[k]) delete appState[k][id]; });
             appState.alerts = appState.alerts.filter(a => a.equipId !== id);
             logEvent('equip_removed', `${d.equipment.name} (${d.factory.name}) - تم حذف المعدة`, null);
+            cloudWrite(GMG.saveFactories(appState.factories).then(() => GMG.removeEquipmentData(id)));
             saveState(); renderDeleteEquipList(); updateAdminEquipDropdown();
             showToast('تم حذف المعدة', 'success');
         };
@@ -1379,10 +1626,10 @@
             if(!appState.factoryPmLogs) appState.factoryPmLogs = {};
             if(!appState.factoryPmLogs[equipId]) appState.factoryPmLogs[equipId] = [];
             
-            appState.factoryPmLogs[equipId].push({
-                task: task, byUserId: appState.currentUser.id,
-                byUser: appState.currentUser.name, date: new Date().toISOString()
-            });
+            const _pmEntry = { task: task, byUserId: appState.currentUser.id || '', byUser: appState.currentUser.name || '', date: new Date().toISOString() };
+            appState.factoryPmLogs[equipId] = appState.factoryPmLogs[equipId].filter(l => l.task !== task);
+            appState.factoryPmLogs[equipId].push(_pmEntry);
+            cloudWrite(GMG.addPmLog(equipId, _pmEntry));
 
             const details = getEquipmentDetails(equipId);
             logEvent('factory_pm_done', `${details.equipment.name} (${details.factory.name}) - ${task}`, equipId, task);
@@ -1395,6 +1642,7 @@
             document.getElementById('uh-equipId').value = equipId;
             document.getElementById('uh-equipName').innerText = name;
             document.getElementById('uh-currentHours').value = hours;
+            GMG.watchEquip('cycles', equipId, (list) => { appState.maintenanceCycles[equipId] = list; if (!document.getElementById('view-hours-management').classList.contains('hidden-view') && document.getElementById('uh-equipId').value === equipId) renderMaintenanceCyclesHistory(equipId); });
             renderMaintenanceCyclesHistory(equipId);
             openModal('view-hours-management', (currentLang==='ar'?'إدارة الساعات وصيانة 4000h: ':'4000h Management: ') + name);
         };
@@ -1432,7 +1680,7 @@
             if(!appState.maintenanceCycles[equipId]) appState.maintenanceCycles[equipId] = [];
 
             const cycleRecord = {
-                id: 'cyc_' + Date.now(),
+                id: 'cyc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
                 hoursAtCycle: details.equipment.hours,
                 userId: appState.currentUser.id,
                 userName: appState.currentUser.name,
@@ -1440,6 +1688,7 @@
             };
 
             appState.maintenanceCycles[equipId].push(cycleRecord);
+            cloudWrite(GMG.addCycle(equipId, cycleRecord));
             logEvent('cycle_done', `${details.equipment.name} (${details.factory.name}) عند ${details.equipment.hours} ساعة`, equipId);
             saveState();
             renderMaintenanceCyclesHistory(equipId);
@@ -1455,6 +1704,7 @@
             if(details && !isNaN(newHours)) {
                 details.equipment.hours = newHours;
                 logEvent('hours', `${details.equipment.name} (${details.factory.name}) -> ${newHours} hr`, id);
+                cloudWrite(GMG.setHours(id, newHours, appState.currentUser));
                 closeModal();
                 saveState();
                 showToast(currentLang==='ar'?'تم تحديث ساعات التشغيل بنجاح':'Running hours updated successfully', 'success');
@@ -1465,6 +1715,7 @@
             const eq = getEquipmentDetails(id).equipment; 
             document.getElementById('di-equipId').value = id;
             document.getElementById('ih-equipName').innerText = eq.name;
+            GMG.watchEquip('inspections', id, (list) => { appState.dailyInspections[id] = list; if (!document.getElementById('view-inspection-history').classList.contains('hidden-view') && document.getElementById('di-equipId').value === id) renderInspectionTable(id); });
             renderInspectionTable(id);
             openModal('view-inspection-history', (currentLang==='ar'?'سجل فحص: ':'History: ') + eq.name);
         }
@@ -1585,7 +1836,7 @@
             };
 
             const record = {
-                id: 'insp_' + Date.now(),
+                id: 'insp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
                 date: new Date().toISOString(),
                 userId: appState.currentUser.id || "",
                 userName: appState.currentUser.name || "",
@@ -1597,6 +1848,7 @@
             if(!appState.dailyInspections[id]) appState.dailyInspections[id] = [];
             
             appState.dailyInspections[id].push(record);
+            cloudWrite(GMG.addInspection(id, record));
 
             if(details) logEvent('daily_insp', `${details.equipment.name} (${details.factory.name})`, id);
             
@@ -1657,7 +1909,7 @@
             
             if(details) {
                 const alert = {
-                    id: 'alert_' + Date.now(),
+                    id: 'alert_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
                     equipId: id, equipName: details.equipment.name,
                     factoryId: details.factory.id, factoryName: details.factory.name,
                     description: desc, image: window.currentIssueImage || "",
@@ -1665,6 +1917,7 @@
                     date: new Date().toISOString()
                 };
                 appState.alerts.unshift(alert);
+                cloudWrite(GMG.addAlert(alert));
                 logEvent('issue', `${details.equipment.name} (${details.factory.name}) - ${desc.substring(0, 35)}`, id, alert.id);
                 
                 sendExternalWebhook('emergency_issue', '🚨 عطل طارئ جديد', `${details.equipment.name} (${details.factory.name}): ${desc}`);
@@ -1722,6 +1975,11 @@
             if (alert.image) {
                 imgEl.src = alert.image;
                 imgContainer.classList.remove('hidden');
+            } else if (alert.hasImage) {
+                imgContainer.classList.remove('hidden');
+                GMG.getAlertImage(alert.id).then(img => {
+                    if (img && document.getElementById('vi-alertId').value === alert.id) imgEl.src = img;
+                }).catch(e => console.error('image load error', e));
             } else {
                 imgContainer.classList.add('hidden');
             }
@@ -1736,6 +1994,7 @@
                 alert.resolvedBy = appState.currentUser.name;
                 alert.resolvedDate = new Date().toISOString();
                 
+                cloudWrite(GMG.updateAlert(alert.id, { status: alert.status, resolvedBy: alert.resolvedBy, resolvedDate: alert.resolvedDate }));
                 logEvent('issue_resolved', `${alert.equipName} (${alert.factoryName}) - أصلح العطل: ${appState.currentUser.name}`, alert.equipId, alert.id);
                 closeModal();
                 saveState();
@@ -1751,6 +2010,7 @@
                 alert.resolvedBy = appState.currentUser.name;
                 alert.resolvedDate = new Date().toISOString();
                 
+                cloudWrite(GMG.updateAlert(alert.id, { status: alert.status, resolvedBy: alert.resolvedBy, resolvedDate: alert.resolvedDate }));
                 logEvent('issue_skipped', `${alert.equipName} (${alert.factoryName}) - أحال/تخطى العطل: ${appState.currentUser.name}`, alert.equipId, alert.id);
                 closeModal();
                 saveState();
@@ -1797,6 +2057,7 @@
             if (dept && name) {
                 const newEq = { id: 'eq_' + Date.now(), name: name, type: type, hours: 0 };
                 dept.equipment.push(newEq);
+                cloudWrite(GMG.saveFactories(appState.factories));
                 saveState();
                 document.getElementById('form-admin-add-equip').reset();
                 updateAdminEquipDropdown();
@@ -1856,6 +2117,7 @@
                 if(!appState.pmAssigned) appState.pmAssigned = {};
                 if(!appState.pmAssigned[equipId]) appState.pmAssigned[equipId] = {};
                 appState.pmAssigned[equipId][input.value.trim()] = new Date().toISOString();
+                cloudWrite(GMG.addPmTask(equipId, input.value.trim()));
                 
                 const details = getEquipmentDetails(equipId);
                 logEvent('pm_updated', `${details.equipment.name} (${details.factory.name}) - أضاف بند: ${input.value.trim()}`, equipId);
@@ -1869,7 +2131,9 @@
         };
         
         window.removePmTask = function(equipId, index) {
+            const _rmTask = appState.pmTemplates[equipId][index];
             appState.pmTemplates[equipId].splice(index, 1);
+            if (_rmTask !== undefined) cloudWrite(GMG.removePmTask(equipId, _rmTask));
             const details = getEquipmentDetails(equipId);
             logEvent('pm_updated', `${details.equipment.name} (${details.factory.name}) - تم حذف بند صيانة`, equipId);
             loadAdminPmTasks();
@@ -2030,15 +2294,18 @@
             showToast('تم نسخ الجدول بنجاح! يمكنك لصقه مباشرة داخل Excel', 'success');
         };
 
-        window.exportInspectionsCSV = function() {
+        window.exportInspectionsCSV = async function() {
             let rowsHtml = '';
             let count = 0;
-            Object.keys(appState.dailyInspections || {}).forEach(eqId => {
+            showToast('جاري تجهيز البيانات من السحابة...', 'info');
+            let _allInsp = {};
+            try { _allInsp = await GMG.fetchAllByEquip('inspections', allEquipIds()); } catch (e) { console.error(e); showToast('تعذر قراءة البيانات من السحابة', 'danger'); return; }
+            Object.keys(_allInsp).forEach(eqId => {
                 const details = getEquipmentDetails(eqId);
                 const fName = details ? details.factory.name : '';
                 const dName = details ? details.dept.name : '';
                 const eName = details ? details.equipment.name : eqId;
-                (appState.dailyInspections[eqId] || []).forEach(rec => {
+                (_allInsp[eqId] || []).sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(rec => {
                     count++;
                     const d = rec.data || {};
                     rowsHtml += `
@@ -2090,11 +2357,14 @@
             triggerExcelExport(tableHtml, `Daily_Inspections_${new Date().toISOString().slice(0,10)}.xls`, `تقرير الفحوصات اليومية (${count} سجل)`);
         };
 
-        window.exportPmAndIssuesCSV = function() {
+        window.exportPmAndIssuesCSV = async function() {
             let rowsHtml = '';
             let count = 0;
 
-            (appState.alerts || []).forEach(a => {
+            showToast('جاري تجهيز البيانات من السحابة...', 'info');
+            let _alerts = [], _logs = {}, _cycles = {};
+            try { [_alerts, _logs, _cycles] = await Promise.all([GMG.fetchAllAlerts(), GMG.fetchAllByEquip('pmLogs', allEquipIds()), GMG.fetchAllByEquip('cycles', allEquipIds())]); } catch (e) { console.error(e); showToast('تعذر قراءة البيانات من السحابة', 'danger'); return; }
+            _alerts.forEach(a => {
                 count++;
                 const statusStr = a.status === 'open' ? 'عطل نشط (مفتوح)' : (a.status === 'skipped' ? `تم إحالته/تخطيه بواسطة (${a.resolvedBy || ''})` : `تم الإصلاح بواسطة (${a.resolvedBy || ''})`);
                 rowsHtml += `
@@ -2109,9 +2379,9 @@
                     </tr>`;
             });
 
-            Object.keys(appState.factoryPmLogs || {}).forEach(eqId => {
+            Object.keys(_logs).forEach(eqId => {
                 const details = getEquipmentDetails(eqId);
-                (appState.factoryPmLogs[eqId] || []).forEach(l => {
+                (_logs[eqId] || []).forEach(l => {
                     count++;
                     rowsHtml += `
                         <tr class="border-b">
@@ -2126,9 +2396,9 @@
                 });
             });
 
-            Object.keys(appState.maintenanceCycles || {}).forEach(eqId => {
+            Object.keys(_cycles).forEach(eqId => {
                 const details = getEquipmentDetails(eqId);
-                (appState.maintenanceCycles[eqId] || []).forEach(c => {
+                (_cycles[eqId] || []).forEach(c => {
                     count++;
                     rowsHtml += `
                         <tr class="border-b">
