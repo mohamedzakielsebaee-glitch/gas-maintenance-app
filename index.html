@@ -120,20 +120,33 @@
         .hidden-view { display: none !important; }
         .glass-modal { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
         .en-font { font-family: 'Inter', sans-serif; }
+        #loginOverlay{background:radial-gradient(900px 600px at 20% 20%,rgba(29,58,138,.55),transparent 70%),radial-gradient(700px 500px at 85% 90%,rgba(245,158,11,.14),transparent 70%),#060b1a !important}
+        #loginOverlay>div>.h-2{background:linear-gradient(90deg,#f59e0b,#3b82f6) !important}
+        #gmgSplash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;background:radial-gradient(900px 600px at 20% 25%,rgba(29,58,138,.6),transparent 70%),radial-gradient(700px 500px at 85% 90%,rgba(245,158,11,.15),transparent 70%),#060b1a;animation:gsOut .7s ease 2.3s forwards}
+        .gs-in{animation:gsUp .9s cubic-bezier(.2,.8,.2,1) both}
+        @keyframes gsUp{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+        @keyframes gsOut{to{opacity:0;visibility:hidden}}
+        @keyframes gsLine{to{width:180px}}
+        .gs-t{font-size:44px;font-weight:800;letter-spacing:10px;margin-top:14px;padding-right:10px}
+        .gs-s{font-size:11px;letter-spacing:4px;color:#9fb0d0;margin-top:4px}
+        .gs-l{height:3px;width:0;margin:18px auto 14px;background:linear-gradient(90deg,#f59e0b,#3b82f6);border-radius:2px;animation:gsLine 1s ease .6s forwards}
+        .gs-k{font-size:20px;font-weight:700;color:#f59e0b;opacity:0;animation:gsUp .8s ease 1s forwards}
     </style>
 </head>
 <body class="text-slate-800 antialiased overflow-hidden flex h-screen">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="gmgLb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e3a9f"/><stop offset="1" stop-color="#3b82f6"/></linearGradient><linearGradient id="gmgGa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc247"/><stop offset="1" stop-color="#f26a1b"/></linearGradient></defs></svg>
+<div id="gmgSplash" aria-hidden="true"><div class="gs-in"><svg class="" width="140" height="140" viewBox="0 0 64 64" aria-label="GMG"><path d="M32 2 57.5 16.5v31L32 62 6.5 47.5v-31z" fill="url(#gmgLb)"/><path d="M32 7.5 52.7 19.3v25.4L32 56.5 11.3 44.7V19.3z" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1.4"/><path d="M32 13c1 7 12 13 12 25a12 12 0 0 1-24 0c0-6 3-10 6-13 0 4 2 6 4.5 6.5C29 24 29 18 32 13z" fill="#fff"/><path d="M32 32c3 3.5 6.5 6 6.5 10a6.5 6.5 0 0 1-13 0c0-3 1.5-5 3.2-6.5.5 2 1.5 2.7 2.6 2.8-.6-2.7.4-4.7.7-6.3z" fill="url(#gmgGa)"/></svg><div class="gs-t">GMG</div><div class="gs-s">GAS MAINTENANCE GROUP</div><div class="gs-l"></div><div class="gs-k">صيانة أذكى، أداء أعلى</div></div></div>
+<script>setTimeout(function(){var s=document.getElementById("gmgSplash");if(s&&s.parentNode)s.parentNode.removeChild(s)},3200);</script>
 
     <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center">
         <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-fade-in relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-2 bg-primary"></div>
             <div class="text-center mb-8">
                 <div class="mx-auto mb-4 flex justify-center">
-                    <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center border-4 border-blue-100 shadow-inner">
-                        <i class="fas fa-cogs text-4xl text-primary"></i>
-                    </div>
+                    <svg class="drop-shadow-lg" width="96" height="96" viewBox="0 0 64 64" aria-label="GMG"><path d="M32 2 57.5 16.5v31L32 62 6.5 47.5v-31z" fill="url(#gmgLb)"/><path d="M32 7.5 52.7 19.3v25.4L32 56.5 11.3 44.7V19.3z" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1.4"/><path d="M32 13c1 7 12 13 12 25a12 12 0 0 1-24 0c0-6 3-10 6-13 0 4 2 6 4.5 6.5C29 24 29 18 32 13z" fill="#fff"/><path d="M32 32c3 3.5 6.5 6 6.5 10a6.5 6.5 0 0 1-13 0c0-3 1.5-5 3.2-6.5.5 2 1.5 2.7 2.6 2.8-.6-2.7.4-4.7.7-6.3z" fill="url(#gmgGa)"/></svg>
                 </div>
                 <h1 class="text-2xl font-bold text-slate-800">Gas Maintenance Group</h1>
+                <p class="text-xs font-extrabold mt-1" style="color:#f59e0b;letter-spacing:1px">صيانة أذكى، أداء أعلى</p>
                 <p class="text-slate-500 mt-2" data-i18n="login_subtitle">قم بتسجيل الدخول للمتابعة</p>
             </div>
 
@@ -193,7 +206,7 @@
     <aside id="sidebar" class="bg-dark text-white w-64 flex-shrink-0 hidden md:flex flex-col transition-all duration-300 z-20 absolute md:relative h-full shadow-xl">
         <div class="p-4 flex items-center justify-between border-b border-slate-700/50">
             <div class="flex items-center gap-2 font-bold text-lg leading-tight">
-                <i class="fas fa-cogs text-secondary text-xl"></i>
+                <svg style="flex-shrink:0" class="" width="34" height="34" viewBox="0 0 64 64" aria-label="GMG"><path d="M32 2 57.5 16.5v31L32 62 6.5 47.5v-31z" fill="url(#gmgLb)"/><path d="M32 7.5 52.7 19.3v25.4L32 56.5 11.3 44.7V19.3z" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1.4"/><path d="M32 13c1 7 12 13 12 25a12 12 0 0 1-24 0c0-6 3-10 6-13 0 4 2 6 4.5 6.5C29 24 29 18 32 13z" fill="#fff"/><path d="M32 32c3 3.5 6.5 6 6.5 10a6.5 6.5 0 0 1-13 0c0-3 1.5-5 3.2-6.5.5 2 1.5 2.7 2.6 2.8-.6-2.7.4-4.7.7-6.3z" fill="url(#gmgGa)"/></svg>
                 <span>Gas Maintenance<br>Group</span>
             </div>
             <button id="closeSidebarBtn" class="md:hidden text-slate-400 hover:text-white">
@@ -599,6 +612,14 @@
                                     <i class="fas fa-plus"></i> <span id="admin-inv-btn-label">إضافة / تحديث</span>
                                 </button>
                             </div>
+                        </div>
+
+                        <div class="mt-2 bg-blue-50/60 border border-blue-200 rounded-xl p-3">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <b class="text-[11px] text-blue-900"><i class="fas fa-link"></i> ربط الصنف بالمعدّات (يُخصم تلقائياً عند التسجيل، ويظهر في النصائح الذكية)</b>
+                                <button type="button" onclick="window._invLinkSel=new Set();renderInvLinkPicker()" class="text-[10px] text-red-600 font-bold whitespace-nowrap">مسح الاختيار</button>
+                            </div>
+                            <div id="admin-inv-links" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
                         </div>
 
                         <div id="admin-inv-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1"></div>
@@ -2199,24 +2220,29 @@
             const details = getEquipmentDetails(equipId);
             const eq = details ? details.equipment : null;
             const isLpg = eq && (eq.isLpgComp || String(eq.name || '').toLowerCase().includes('lpg'));
+            // الأصناف المربوطة بهذه المعدّة من شاشة المخزن
+            const linked = appState.inventory.filter(x => Array.isArray(x.linkedEquip) && x.linkedEquip.includes(equipId));
+            const stamp = (it) => { it.lastUsedAt = new Date().toISOString(); it.lastUsedFor = eq ? eq.name : ''; changed = true; };
+            const warn = (it) => {
+                if (Number(it.qty || 0) <= Number(it.minQty || 0)) {
+                    showToast(`⚠️ تنبيه مخزون: رصيد (${it.name}) وصل إلى ${it.qty} ${it.unit || ''}!`, 'danger');
+                }
+            };
 
-            // 1. Deduct Oil Liters if numeric > 0
+            // 1. خصم لترات الزيت من الزيت المربوط بالمعدّة (وإلا الزيت الافتراضي)
             const liters = parseFloat(String(oilVal || '').replace(/[^0-9.]/g, ''));
             if (!isNaN(liters) && liters > 0) {
                 const targetOilId = isLpg ? 'inv_oil_lpg150' : 'inv_oil_screw46';
-                const oilItem = appState.inventory.find(x => x.id === targetOilId) || appState.inventory.find(x => x.category === 'oil');
+                const oilItem = linked.find(x => x.category === 'oil')
+                    || appState.inventory.find(x => x.id === targetOilId)
+                    || appState.inventory.find(x => x.category === 'oil');
                 if (oilItem) {
                     oilItem.qty = Math.max(0, Math.round((Number(oilItem.qty || 0) - liters) * 10) / 10);
-                    oilItem.lastUsedAt = new Date().toISOString();
-                    oilItem.lastUsedFor = eq ? eq.name : '';
-                    changed = true;
-                    if (oilItem.qty <= Number(oilItem.minQty || 0)) {
-                        showToast(`⚠️ تنبيه مخزون: رصيد (${oilItem.name}) وصل إلى ${oilItem.qty} ${oilItem.unit}!`, 'danger');
-                    }
+                    stamp(oilItem); warn(oilItem);
                 }
             }
 
-            // 2. Check keywords in notes or oilVal for spare parts deduction (1 unit)
+            // 2. خصم قطعة واحدة عند ذكر قطعة غيار في الملاحظات (من المربوطة أولاً)
             const combined = (String(oilVal || '') + ' ' + String(notesText || '')).toLowerCase();
             const keywordMap = [
                 { kw: ['فلتر زيت', 'oil filter'], id: 'inv_flt_oil' },
@@ -2227,17 +2253,12 @@
                 { kw: ['ميكانيكال سيل', 'مانع تسرب', 'mechanical seal'], id: 'inv_seal_mech' }
             ];
             keywordMap.forEach(rule => {
-                if (rule.kw.some(k => combined.includes(k))) {
-                    const partItem = appState.inventory.find(x => x.id === rule.id);
-                    if (partItem && Number(partItem.qty || 0) > 0) {
-                        partItem.qty = Math.max(0, Number(partItem.qty || 0) - 1);
-                        partItem.lastUsedAt = new Date().toISOString();
-                        partItem.lastUsedFor = eq ? eq.name : '';
-                        changed = true;
-                        if (partItem.qty <= Number(partItem.minQty || 0)) {
-                            showToast(`⚠️ تنبيه مخزون: رصيد (${partItem.name}) انخفض إلى ${partItem.qty} ${partItem.unit}!`, 'danger');
-                        }
-                    }
+                if (!rule.kw.some(k => combined.includes(k))) return;
+                const partItem = linked.find(x => x.category !== 'oil' && (x.id === rule.id || rule.kw.some(k => String(x.name || '').toLowerCase().includes(k))))
+                    || appState.inventory.find(x => x.id === rule.id);
+                if (partItem && Number(partItem.qty || 0) > 0) {
+                    partItem.qty = Math.max(0, Number(partItem.qty || 0) - 1);
+                    stamp(partItem); warn(partItem);
                 }
             });
 
@@ -3411,6 +3432,16 @@
                 targetedTips.push('بسبب ذكر (السيور): يُنصح باستبدال طقم السيور بالكامل معاً وضبط الشد والمحاذاة على الطنابير.');
             }
 
+            // ربط النصائح الذكية بأصناف المخزن المربوطة بالمعدّة (إن وُجدت)
+            try {
+                const lk = (appState.inventory || []).filter(x => Array.isArray(x.linkedEquip) && x.linkedEquip.includes(equipId));
+                const fmt = x => `${x.name} (الرصيد: ${x.qty} ${x.unit || ''})`;
+                const lo = lk.filter(x => x.category === 'oil').map(fmt);
+                const lp = lk.filter(x => x.category !== 'oil').map(fmt);
+                if (lo.length) oilRec = lo.join(' • ');
+                if (lp.length) partsRec = lp.join(' • ');
+            } catch (e) { }
+
             return {
                 eqName: eq.name,
                 customSpecs: customSpecs,
@@ -4199,23 +4230,55 @@
         };
 
         
+        /* ===== إدارة المخزن: للمشرف والأدمن الرئيسي فقط (الفني يعرض فقط) ===== */
+        window.canManageStock = function() {
+            return !!(appState.currentUser && appState.currentUser.role === 'admin');
+        };
+        function denyStockEdit() {
+            showToast('إدارة المخزن متاحة للمشرف والأدمن الرئيسي فقط', 'danger');
+        }
+        window._invLinkSel = new Set();
+
+        window.renderInvLinkPicker = function() {
+            const box = document.getElementById('admin-inv-links');
+            if (!box) return;
+            const sel = window._invLinkSel;
+            const wasOpen = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.f));
+            box.innerHTML = (appState.factories || []).map(f => {
+                const eqs = [];
+                (f.departments || []).forEach(d => (d.equipment || []).forEach(e => eqs.push(e)));
+                if (!eqs.length) return '';
+                const n = eqs.filter(e => sel.has(e.id)).length;
+                return `<details data-f="${escapeHTML(f.id)}" ${(wasOpen.has(f.id) || n) ? 'open' : ''} class="border border-blue-100 rounded-lg bg-white">
+                    <summary class="px-2 py-1 text-[11px] font-bold cursor-pointer flex justify-between"><span>${escapeHTML(f.name)}</span><span class="text-blue-700">${n}/${eqs.length}</span></summary>
+                    <div class="p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">${eqs.map(e => `<label class="flex items-center gap-1 text-[11px]"><input type="checkbox" ${sel.has(e.id) ? 'checked' : ''} onchange="toggleInvLink('${escapeHTML(e.id)}', this.checked)"><span>${escapeHTML(e.name)}</span></label>`).join('')}</div>
+                </details>`;
+            }).join('');
+        };
+        window.toggleInvLink = function(id, on) {
+            if (on) window._invLinkSel.add(id); else window._invLinkSel.delete(id);
+            renderInvLinkPicker();
+        };
+
         window.renderAdminInventorySection = function() {
             const box = document.getElementById('admin-inv-list');
             if (!box) return;
             const items = Array.isArray(appState.inventory) ? appState.inventory : [];
             box.innerHTML = items.map(item => {
                 const isLow = Number(item.qty || 0) <= Number(item.minQty || 0);
+                const n = Array.isArray(item.linkedEquip) ? item.linkedEquip.length : 0;
                 return `
                     <div class="p-3 rounded-xl border ${isLow ? 'bg-red-50/80 border-red-300' : 'bg-white border-slate-200'} shadow-sm flex flex-col justify-between gap-2 text-xs">
                         <div class="flex justify-between items-start gap-2">
                             <b class="text-slate-800 leading-snug">${escapeHTML(item.name)}</b>
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap ${isLow ? 'bg-red-600 text-white animate-pulse' : 'bg-emerald-100 text-emerald-800'}">${escapeHTML(item.qty)} ${escapeHTML(item.unit || '')}</span>
                         </div>
+                        <div class="text-[10px] ${n ? 'text-blue-700' : 'text-slate-400'}">${n ? `<i class="fas fa-link"></i> مرتبط بـ ${n} معدّة` : 'غير مرتبط بمعدّة'}</div>
                         <div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100">
                             <span>الحد الأدنى: <b>${escapeHTML(item.minQty || 0)}</b> ${item.lastUsedFor ? `• آخر سحب: ${escapeHTML(item.lastUsedFor)}` : ''}</span>
                             <div class="flex items-center gap-1">
-                                <button type="button" onclick="adjustInventoryQty('${item.id}', 1)" class="w-6 h-6 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold" title="تزويد +1">+</button>
-                                <button type="button" onclick="adjustInventoryQty('${item.id}', -1)" class="w-6 h-6 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold" title="خصم -1">-</button>
+                                <button type="button" onclick="adjustInventoryQty('${item.id}', 1)" class="w-6 h-6 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold" title="إضافة رصيد">+</button>
+                                <button type="button" onclick="adjustInventoryQty('${item.id}', -1)" class="w-6 h-6 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold" title="سحب رصيد">-</button>
                                 <button type="button" onclick="editAdminInventoryItem('${item.id}')" class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold">تعديل</button>
                                 <button type="button" onclick="deleteAdminInventoryItem('${item.id}')" class="px-1.5 py-0.5 rounded bg-red-50 text-red-600"><i class="fas fa-trash"></i></button>
                             </div>
@@ -4223,15 +4286,18 @@
                     </div>
                 `;
             }).join('') || '<p class="text-xs text-slate-400 col-span-3 text-center py-4">لا توجد أصناف في المخزن بعد.</p>';
+            renderInvLinkPicker();
         };
 
         window.saveAdminInventoryItem = function() {
+            if (!canManageStock()) return denyStockEdit();
             const editId = document.getElementById('admin-inv-edit-id')?.value || '';
             const name = document.getElementById('admin-inv-name')?.value?.trim() || '';
             const category = document.getElementById('admin-inv-cat')?.value || 'part';
             const unit = document.getElementById('admin-inv-unit')?.value?.trim() || 'قطعة';
             const qty = parseFloat(document.getElementById('admin-inv-qty')?.value);
             const minQty = parseFloat(document.getElementById('admin-inv-min')?.value) || 0;
+            const linkedEquip = [...window._invLinkSel];
 
             if (!name || isNaN(qty)) {
                 showToast('يرجى إدخال اسم الصنف والرصيد المتاح', 'danger');
@@ -4242,12 +4308,12 @@
             if (editId) {
                 const idx = appState.inventory.findIndex(x => x.id === editId);
                 if (idx !== -1) {
-                    appState.inventory[idx] = { ...appState.inventory[idx], name, category, unit, qty, minQty };
+                    appState.inventory[idx] = { ...appState.inventory[idx], name, category, unit, qty, minQty, linkedEquip };
                 }
             } else {
                 appState.inventory.push({
                     id: 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
-                    name, category, unit, qty, minQty
+                    name, category, unit, qty, minQty, linkedEquip
                 });
             }
             cloudWrite(GMG.saveInventory(appState.inventory));
@@ -4255,12 +4321,15 @@
             document.getElementById('admin-inv-name').value = '';
             document.getElementById('admin-inv-qty').value = '';
             document.getElementById('admin-inv-btn-label').textContent = 'إضافة / تحديث';
+            window._invLinkSel = new Set();
             renderAdminInventorySection();
             saveState();
+            if (document.getElementById('gmg-inv-modal-body')) window.gmgPro.inventory();
             showToast('تم حفظ الصنف في مخزن قطع الغيار والزيوت بنجاح', 'success');
         };
 
         window.editAdminInventoryItem = function(id) {
+            if (!canManageStock()) return denyStockEdit();
             const item = (appState.inventory || []).find(x => x.id === id);
             if (!item) return;
             document.getElementById('admin-inv-edit-id').value = item.id;
@@ -4270,10 +4339,13 @@
             document.getElementById('admin-inv-qty').value = item.qty;
             document.getElementById('admin-inv-min').value = item.minQty || 0;
             document.getElementById('admin-inv-btn-label').textContent = 'حفظ التعديل';
+            window._invLinkSel = new Set(Array.isArray(item.linkedEquip) ? item.linkedEquip : []);
+            renderInvLinkPicker();
             document.getElementById('admin-inv-name').focus();
         };
 
         window.adjustInventoryQty = function(id, delta) {
+            if (!canManageStock()) return denyStockEdit();
             const item = (appState.inventory || []).find(x => x.id === id);
             if (!item) return;
             item.qty = Math.max(0, Math.round((Number(item.qty || 0) + delta) * 10) / 10);
@@ -4284,6 +4356,7 @@
         };
 
         window.deleteAdminInventoryItem = function(id) {
+            if (!canManageStock()) return denyStockEdit();
             const item = (appState.inventory || []).find(x => x.id === id);
             if (!item) return;
             openConfirmModal(`حذف الصنف "${item.name}" من المخزن؟`, function() {
@@ -4291,6 +4364,7 @@
                 cloudWrite(GMG.saveInventory(appState.inventory));
                 renderAdminInventorySection();
                 saveState();
+                if (document.getElementById('gmg-inv-modal-body')) window.gmgPro.inventory();
                 showToast('تم حذف الصنف من المخزن', 'info');
             });
         };
@@ -5699,37 +5773,52 @@
       PRO.inventory=()=>{
         const items = Array.isArray(appState.inventory) ? appState.inventory : [];
         const lowCount = items.filter(x => Number(x.qty || 0) <= Number(x.minQty || 0)).length;
-        const isAdmin = appState.currentUser && appState.currentUser.role === 'admin';
+        const canEdit = typeof window.canManageStock === 'function' && window.canManageStock();
+        const linkedNames = (item) => (Array.isArray(item.linkedEquip) ? item.linkedEquip : []).map(id => { const d = getEquipmentDetails(id); return d ? d.equipment.name : ''; }).filter(Boolean);
         const body = `
           <div id="gmg-inv-modal-body" class="space-y-4">
             <div class="p-3.5 rounded-xl border ${lowCount > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'} flex flex-wrap items-center justify-between gap-2 text-xs">
               <div>
                 <b class="text-sm"><i class="fas fa-boxes-stacked ml-1"></i> ${lowCount > 0 ? `تنبيه: يوجد (${lowCount}) أصناف وصلت للحد الأدنى وتحتاج طلبية!` : 'جميع أرصدة الزيوت والفلاتر والسيور في المستوى الآمن'}</b>
-                <p class="mt-0.5 opacity-80">يتم خصم لترات الزيت وقطع الغيار تلقائياً عند تسجيلها في بنود الصيانة أو الأعطال.</p>
+                <p class="mt-0.5 opacity-80">يُخصم الزيت وقطع الغيار تلقائياً من الأصناف المربوطة بالمعدّة عند تسجيلها في بنود الصيانة أو الأعطال.${canEdit ? '' : ' (عرض فقط)'}</p>
               </div>
-              ${isAdmin ? `<button onclick="document.getElementById('gmg-pro-modal')?.remove();showAdminSettings()" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs"><i class="fas fa-plus"></i> إضافة صنف جديد</button>` : ''}
+              ${canEdit ? `<button onclick="document.getElementById('gmg-pro-modal')?.remove();showAdminSettings()" class="bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold text-xs"><i class="fas fa-plus"></i> إضافة صنف جديد / ربط بالمعدّات</button>` : ''}
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
               ${items.map(item => {
                 const isLow = Number(item.qty || 0) <= Number(item.minQty || 0);
+                const ln = linkedNames(item);
                 return `
                   <div class="p-3.5 rounded-xl border ${isLow ? 'border-red-300 bg-red-50/50' : 'border-slate-200 bg-white'} flex items-center justify-between gap-3 shadow-sm">
                     <div class="min-w-0">
                       <div class="font-extrabold text-slate-800 text-xs sm:text-sm truncate">${esc(item.name)}</div>
                       <div class="text-[11px] text-slate-500 mt-0.5">الحد الأدنى للتنبيه: <b>${esc(item.minQty || 0)} ${esc(item.unit || '')}</b> ${item.lastUsedFor ? `• آخر سحب: <b>${esc(item.lastUsedFor)}</b>` : ''}</div>
+                      ${ln.length ? `<div class="text-[10px] text-blue-700 mt-0.5 truncate"><i class="fas fa-link"></i> ${esc(ln.slice(0, 2).join('، '))}${ln.length > 2 ? ` و${ln.length - 2} أخرى` : ''}</div>` : ''}
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
                       <span class="px-3 py-1 rounded-full text-xs font-extrabold ${isLow ? 'bg-red-600 text-white animate-pulse' : 'bg-emerald-100 text-emerald-800'}">${esc(item.qty)} ${esc(item.unit || '')}</span>
-                      <div class="flex flex-col gap-1">
-                        <button onclick="adjustInventoryQty('${esc(item.id)}', 1)" class="w-6 h-6 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs" title="إضافة رصيد">+</button>
-                        <button onclick="adjustInventoryQty('${esc(item.id)}', -1)" class="w-6 h-6 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs" title="سحب رصيد">-</button>
-                      </div>
+                      ${canEdit ? `<div class="flex flex-col gap-1">
+                        <div class="flex gap-1">
+                          <button onclick="adjustInventoryQty('${esc(item.id)}', 1)" class="w-6 h-6 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs" title="إضافة رصيد">+</button>
+                          <button onclick="adjustInventoryQty('${esc(item.id)}', -1)" class="w-6 h-6 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs" title="سحب رصيد">-</button>
+                        </div>
+                        <div class="flex gap-1">
+                          <button onclick="gmgInvEdit('${esc(item.id)}')" class="w-6 h-6 rounded bg-blue-50 text-blue-700 text-xs" title="تعديل"><i class="fas fa-pen"></i></button>
+                          <button onclick="deleteAdminInventoryItem('${esc(item.id)}')" class="w-6 h-6 rounded bg-red-50 text-red-600 text-xs" title="حذف"><i class="fas fa-trash"></i></button>
+                        </div>
+                      </div>` : ''}
                     </div>
                   </div>`;
               }).join('')}
             </div>
           </div>`;
         PRO.modal(t('مخزن قطع الغيار والزيوت (Spare Parts & Oil Stock)','Spare Parts & Oil Inventory'), body);
+      };
+      window.gmgInvEdit = function(id) {
+        if (!window.canManageStock()) return;
+        document.getElementById('gmg-pro-modal')?.remove();
+        showAdminSettings();
+        setTimeout(() => { editAdminInventoryItem(id); document.getElementById('admin-inv-name')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350);
       };
 
       // 5. تقرير PDF شهري جاهز للطباعة للإدارة العليا
