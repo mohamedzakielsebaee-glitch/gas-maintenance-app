@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" id="html-root">
 <head>
+    <script>window.appId = "gas-maintenance-group-v9";</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gas Maintenance Group</title>
@@ -242,6 +243,11 @@
                     <span id="connectionBadge" class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 flex-shrink-0">
                         <i class="fas fa-spinner fa-spin"></i> جاري الاتصال...
                     </span>
+                    <!-- شارة المستخدمين المتصلين لحظياً في الشريط العلوي -->
+                    <button type="button" onclick="gmgPro.users()" id="headerOnlineUsersBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-extrabold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 transition flex-shrink-0 cursor-pointer shadow-sm" title="المستخدمون المتصلون الآن (مزامنة لحظية سحابية)">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="headerOnlineUsersText">المتصلون: 1</span>
+                    </button>
                 </div>
                 <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     <button id="pwaInstallBtn" onclick="installPWA()" class="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-500 transition px-2.5 py-1.5 rounded-full shadow-sm whitespace-nowrap" title="تثبيت التطبيق على الجهاز">
@@ -317,27 +323,38 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl"><i class="fas fa-industry"></i></div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between gap-3">
                         <div>
-                            <p class="text-sm text-slate-500" data-i18n="total_factories">إجمالي المصانع</p>
-                            <p class="text-2xl font-bold">5</p>
+                            <p class="text-xs font-bold text-slate-500" data-i18n="total_factories">إجمالي المصانع</p>
+                            <p class="text-2xl font-extrabold text-slate-800 mt-1">5</p>
                         </div>
+                        <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center text-lg flex-shrink-0"><i class="fas fa-industry"></i></div>
                     </div>
-                    <div onclick="showMaintenanceDue()" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-orange-300 transition">
-                        <div class="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xl"><i class="fas fa-tools"></i></div>
+                    <div onclick="showMaintenanceDue()" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between gap-3 cursor-pointer hover:shadow-md hover:border-orange-300 transition">
                         <div>
-                            <p class="text-sm text-slate-500" data-i18n="maintenance_due">معدات تحتاج صيانة</p>
-                            <p class="text-2xl font-bold" id="maintenanceDueCount">0</p>
+                            <p class="text-xs font-bold text-slate-500" data-i18n="maintenance_due">معدات تحتاج صيانة</p>
+                            <p class="text-2xl font-extrabold text-orange-600 mt-1" id="maintenanceDueCount">0</p>
                         </div>
+                        <div class="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 border border-orange-100 flex items-center justify-center text-lg flex-shrink-0"><i class="fas fa-screwdriver-wrench"></i></div>
                     </div>
-                    <div onclick="showActiveIssues()" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 cursor-pointer hover:shadow-md hover:border-red-300 transition">
-                        <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div onclick="showActiveIssues()" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between gap-3 cursor-pointer hover:shadow-md hover:border-red-300 transition">
                         <div>
-                            <p class="text-sm text-slate-500" data-i18n="active_issues">بلاغات نشطة</p>
-                            <p class="text-2xl font-bold" id="activeIssuesCount">0</p>
+                            <p class="text-xs font-bold text-slate-500" data-i18n="active_issues">بلاغات نشطة</p>
+                            <p class="text-2xl font-extrabold text-red-600 mt-1" id="activeIssuesCount">0</p>
                         </div>
+                        <div class="w-11 h-11 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center text-lg flex-shrink-0"><i class="fas fa-triangle-exclamation"></i></div>
+                    </div>
+                    <div onclick="gmgPro.users()" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between gap-3 cursor-pointer hover:shadow-md hover:border-cyan-300 transition group" title="المستخدمون المتصلون الآن (اضغط لعرض التفاصيل والمزامنة اللحظية)">
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-slate-500 truncate">المستخدمون النشطون</p>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="text-2xl font-extrabold text-cyan-600" id="dashActiveUsersCount">1</span>
+                                <span class="inline-flex items-center gap-1 text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>لحظي</span>
+                            </div>
+                            <div id="dashActiveUsersNames" class="text-[10px] text-slate-600 font-bold truncate mt-0.5">-</div>
+                        </div>
+                        <div class="w-11 h-11 rounded-xl bg-cyan-50 text-cyan-600 border border-cyan-100 flex items-center justify-center text-lg flex-shrink-0 group-hover:scale-105 transition"><i class="fas fa-users-viewfinder"></i></div>
                     </div>
                 </div>
 
@@ -1543,7 +1560,7 @@
            =================================================================== */
         const GMG = (function () {
             const F = () => window.fb;
-            const root = () => ['artifacts', window.appId, 'public', 'data'];
+            const root = () => ['artifacts', window.appId || 'gas-maintenance-group-v9', 'public', 'data'];
             const col = (...p) => F().collection(F().db, ...root(), ...p);
             const dref = (...p) => F().doc(F().db, ...root(), ...p);
             const clean = (o) => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? "" : v));
@@ -1663,6 +1680,66 @@
                     if (typeof renderAdminUsersSection === 'function' && !document.getElementById('view-admin').classList.contains('hidden-view')) renderAdminUsersSection();
                     h.onChange('users');
                 }, err('users')));
+                unsubs.push(f.onSnapshot(col('presence'), (s) => {
+                    const now = Date.now();
+                    const activeMap = new Map();
+                    const myDocId = (typeof window.getGmgSessionDocId === 'function') ? window.getGmgSessionDocId() : '';
+                    s.forEach(d => {
+                        const data = d.data() || {};
+                        const lastSeen = Number(data.lastSeen || 0);
+                        // Active within last 120 seconds (2 minutes)
+                        if (data.name && (now - lastSeen < 120000)) {
+                            const userKey = (String(data.name).trim() + '|' + String(data.userId || '').trim()).toLowerCase();
+                            const isCurrentSession = (d.id === myDocId);
+                            if (!activeMap.has(userKey) || isCurrentSession || activeMap.get(userKey).lastSeen < lastSeen) {
+                                activeMap.set(userKey, {
+                                    name: data.name,
+                                    userId: data.userId || '',
+                                    role: data.role || 'tech',
+                                    email: data.email || '',
+                                    isMasterAdmin: !!data.isMasterAdmin,
+                                    lastSeen: lastSeen,
+                                    docId: d.id,
+                                    isSelf: isCurrentSession
+                                });
+                            }
+                        } else if (now - lastSeen > 3600000) {
+                            try { f.deleteDoc(d.ref).catch(() => {}); } catch(e) {}
+                        }
+                    });
+
+                    // Ensure currently logged-in user is present
+                    if (appState.currentUser && appState.currentUser.name) {
+                        const cu = appState.currentUser;
+                        const isMaster = (String(cu.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || cu.isMasterAdmin || cu.id === 'MASTER_ADMIN');
+                        const displayName = isMaster ? 'الأدمن الرئيسي' : (cu.name || 'مستخدم');
+                        const cKey = (displayName.trim() + '|' + String(cu.id || '').trim()).toLowerCase();
+                        if (!activeMap.has(cKey)) {
+                            activeMap.set(cKey, {
+                                name: displayName,
+                                userId: cu.id || (isMaster ? 'MASTER_ADMIN' : ''),
+                                role: isMaster ? 'admin' : (cu.role || 'tech'),
+                                email: cu.email || '',
+                                isMasterAdmin: !!isMaster,
+                                lastSeen: now,
+                                docId: myDocId,
+                                isSelf: true
+                            });
+                        } else {
+                            activeMap.get(cKey).isSelf = true;
+                        }
+                    }
+
+                    appState.onlineUsers = Array.from(activeMap.values()).sort((a, b) => {
+                        if (a.isSelf && !b.isSelf) return -1;
+                        if (!a.isSelf && b.isSelf) return 1;
+                        return b.lastSeen - a.lastSeen;
+                    });
+                    if (window.gmgPro) {
+                        window.gmgPro.onlineUsers = appState.onlineUsers;
+                    }
+                    h.onChange('presence');
+                }, err('presence')));
             }
 
             /* ---------- ترحيل لمرة واحدة من المستند القديم appState/main + استرجاع بيانات الأجهزة ---------- */
@@ -1796,6 +1873,46 @@
                 start, stop, migrate,
                 saveFactories: (factories) => F().setDoc(dref('cfg', 'factories'), { factories: clean(stripHours(factories)), updatedAt: Date.now() }),
                 saveUsersConfig: (cfg) => F().setDoc(dref('cfg', 'users'), clean({ ...cfg, updatedAt: Date.now() })),
+                sendHeartbeat: (sessionDocId, userData) => {
+                    const f = F();
+                    if (!f || !f.db) return Promise.resolve();
+                    const isMaster = (String(userData.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || userData.isMasterAdmin || userData.id === 'MASTER_ADMIN');
+                    const displayName = isMaster ? 'الأدمن الرئيسي' : (userData.name || 'مستخدم');
+                    return f.setDoc(dref('presence', sessionDocId), {
+                        name: displayName,
+                        userId: userData.id || (isMaster ? 'MASTER_ADMIN' : ''),
+                        role: isMaster ? 'admin' : (userData.role || 'tech'),
+                        email: userData.email || '',
+                        isMasterAdmin: !!isMaster,
+                        lastSeen: Date.now(),
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                },
+                removePresence: (sessionDocId) => {
+                    const f = F();
+                    if (!f || !f.db) return Promise.resolve();
+                    return f.deleteDoc(dref('presence', sessionDocId)).catch(() => {});
+                },
+                sendHeartbeat: (sessionDocId, userData) => {
+                    const f = F();
+                    if (!f || !f.db) return Promise.resolve();
+                    const isMaster = (String(userData.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || userData.isMasterAdmin || userData.id === 'MASTER_ADMIN');
+                    const displayName = isMaster ? 'الأدمن الرئيسي' : (userData.name || 'مستخدم');
+                    return f.setDoc(dref('presence', sessionDocId), {
+                        name: displayName,
+                        userId: userData.id || (isMaster ? 'MASTER_ADMIN' : ''),
+                        role: isMaster ? 'admin' : (userData.role || 'tech'),
+                        email: userData.email || '',
+                        isMasterAdmin: !!isMaster,
+                        lastSeen: Date.now(),
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                },
+                removePresence: (sessionDocId) => {
+                    const f = F();
+                    if (!f || !f.db) return Promise.resolve();
+                    return f.deleteDoc(dref('presence', sessionDocId)).catch(() => {});
+                },
                 saveInventory: (items) => F().setDoc(dref('cfg', 'inventory'), clean({ items, updatedAt: Date.now() })),
                 unifyTechHistoryInCloud: async (oldNames, oldIds, newName, newId) => {
                     const f = F();
@@ -1960,6 +2077,116 @@
                 }
             };
         })();
+
+        window.getGmgSessionDocId = function() {
+            let sId = sessionStorage.getItem('gmg_sess_id');
+            if (!sId) {
+                sId = 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+                try { sessionStorage.setItem('gmg_sess_id', sId); } catch(e) {}
+            }
+            const u = appState.currentUser || {};
+            const rawId = String(u.id || u.email || u.name || 'guest').trim();
+            const safeUser = encodeURIComponent(rawId).replace(/%/g, 'p').slice(0, 32);
+            return 'pres_' + safeUser + '_' + sId.slice(-6);
+        };
+
+        window.sendGmgPresenceHeartbeat = async function() {
+            if (!window.fb || !window.fb.db || !appState.currentUser) return;
+            const u = appState.currentUser;
+            const docId = window.getGmgSessionDocId();
+            try {
+                if (window.GMG && window.GMG.sendHeartbeat) {
+                    await window.GMG.sendHeartbeat(docId, u);
+                } else {
+                    const f = window.fb;
+                    const appId = window.appId || 'gas-maintenance-group-v9';
+                    const docRef = f.doc(f.db, 'artifacts', appId, 'public', 'data', 'presence', docId);
+                    const isMaster = (String(u.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || u.isMasterAdmin || u.id === 'MASTER_ADMIN');
+                    const displayName = isMaster ? 'الأدمن الرئيسي' : (u.name || 'مستخدم');
+                    await f.setDoc(docRef, {
+                        name: displayName,
+                        userId: u.id || (isMaster ? 'MASTER_ADMIN' : ''),
+                        role: isMaster ? 'admin' : (u.role || 'tech'),
+                        email: u.email || '',
+                        isMasterAdmin: !!isMaster,
+                        lastSeen: Date.now(),
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+            } catch(err) {
+                console.warn('Presence heartbeat err:', err);
+            }
+        };
+
+        window.removeGmgPresence = async function() {
+            if (!window.fb || !window.fb.db) return;
+            const docId = window.getGmgSessionDocId();
+            try {
+                if (window.GMG && window.GMG.removePresence) {
+                    await window.GMG.removePresence(docId);
+                } else {
+                    const f = window.fb;
+                    const appId = window.appId || 'gas-maintenance-group-v9';
+                    const docRef = f.doc(f.db, 'artifacts', appId, 'public', 'data', 'presence', docId);
+                    await f.deleteDoc(docRef);
+                }
+            } catch(err) {}
+        };
+
+        window.getGmgSessionDocId = function() {
+            let sId = sessionStorage.getItem('gmg_sess_id');
+            if (!sId) {
+                sId = 's_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+                try { sessionStorage.setItem('gmg_sess_id', sId); } catch(e) {}
+            }
+            const u = appState.currentUser || {};
+            const rawId = String(u.id || u.email || u.name || 'guest').trim();
+            const safeUser = encodeURIComponent(rawId).replace(/%/g, 'p').slice(0, 32);
+            return 'pres_' + safeUser + '_' + sId.slice(-6);
+        };
+
+        window.sendGmgPresenceHeartbeat = async function() {
+            if (!window.fb || !window.fb.db || !appState.currentUser) return;
+            const u = appState.currentUser;
+            const docId = window.getGmgSessionDocId();
+            try {
+                if (window.GMG && window.GMG.sendHeartbeat) {
+                    await window.GMG.sendHeartbeat(docId, u);
+                } else {
+                    const f = window.fb;
+                    const appId = window.appId || 'gas-maintenance-group-v9';
+                    const docRef = f.doc(f.db, 'artifacts', appId, 'public', 'data', 'presence', docId);
+                    const isMaster = (String(u.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || u.isMasterAdmin || u.id === 'MASTER_ADMIN');
+                    const displayName = isMaster ? 'الأدمن الرئيسي' : (u.name || 'مستخدم');
+                    await f.setDoc(docRef, {
+                        name: displayName,
+                        userId: u.id || (isMaster ? 'MASTER_ADMIN' : ''),
+                        role: isMaster ? 'admin' : (u.role || 'tech'),
+                        email: u.email || '',
+                        isMasterAdmin: !!isMaster,
+                        lastSeen: Date.now(),
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+            } catch(err) {
+                console.warn('Presence heartbeat err:', err);
+            }
+        };
+
+        window.removeGmgPresence = async function() {
+            if (!window.fb || !window.fb.db) return;
+            const docId = window.getGmgSessionDocId();
+            try {
+                if (window.GMG && window.GMG.removePresence) {
+                    await window.GMG.removePresence(docId);
+                } else {
+                    const f = window.fb;
+                    const appId = window.appId || 'gas-maintenance-group-v9';
+                    const docRef = f.doc(f.db, 'artifacts', appId, 'public', 'data', 'presence', docId);
+                    await f.deleteDoc(docRef);
+                }
+            } catch(err) {}
+        };
 
         function allEquipIds() {
             const ids = [];
@@ -2375,6 +2602,7 @@
                         id: matched.id
                     };
                     localStorage.setItem('gmg_user', JSON.stringify(appState.currentUser));
+                    if (window.sendGmgPresenceHeartbeat) window.sendGmgPresenceHeartbeat();
                     initApp();
                     return;
                 } else if (cfg.enforceTechPin) {
@@ -2385,6 +2613,7 @@
 
             appState.currentUser = { role: 'tech', name: escapeHTML(rawName), id: escapeHTML(rawId) };
             localStorage.setItem('gmg_user', JSON.stringify(appState.currentUser));
+            if (window.sendGmgPresenceHeartbeat) window.sendGmgPresenceHeartbeat();
             initApp();
         });
 
@@ -2428,6 +2657,7 @@
                     email: email
                 };
                 localStorage.setItem('gmg_user', JSON.stringify(appState.currentUser));
+                if (window.sendGmgPresenceHeartbeat) window.sendGmgPresenceHeartbeat();
                 initApp();
                 return;
             }
@@ -2447,6 +2677,7 @@
                         uid: cred.user.uid
                     };
                     localStorage.setItem('gmg_user', JSON.stringify(appState.currentUser));
+                    if (window.sendGmgPresenceHeartbeat) window.sendGmgPresenceHeartbeat();
                     initApp();
                     return;
                 } catch (err) {
@@ -2460,8 +2691,13 @@
 
         window.logout = function() {
             openConfirmModal(currentLang === 'ar' ? 'هل تريد تسجيل الخروج من الحساب الحالي؟' : 'Are you sure you want to log out?', async function() {
-                try { if (unsubscribeData) unsubscribeData(); if (window.firebaseSignOut) await window.firebaseSignOut(window.firebaseAuth); } catch (e) {}
+                try {
+                    if (window.removeGmgPresence) await window.removeGmgPresence();
+                    if (unsubscribeData) unsubscribeData();
+                    if (window.firebaseSignOut) await window.firebaseSignOut(window.firebaseAuth);
+                } catch (e) {}
                 appState.currentUser = null; localStorage.removeItem('gmg_user');
+                try { sessionStorage.removeItem('gmg_sess_id'); } catch(e) {}
                 document.querySelectorAll('#loginOverlay input').forEach(i => {
                     if (i.id === 'login-admin-email') i.value = MASTER_ADMIN_EMAIL;
                     else i.value = '';
@@ -2499,7 +2735,34 @@
             }
 
             initPush(); checkPwaInstalledState();
+            if (window.sendGmgPresenceHeartbeat) {
+                window.sendGmgPresenceHeartbeat();
+            }
             setLanguage(currentLang); renderSidebar(); showDashboard();
+        }
+
+        // Global continuous heartbeat for presence synchronization
+        if (!window._presenceHeartbeatTimer) {
+            window._presenceHeartbeatTimer = setInterval(() => {
+                if (window.sendGmgPresenceHeartbeat && appState.currentUser) {
+                    window.sendGmgPresenceHeartbeat();
+                }
+            }, 25000);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && window.sendGmgPresenceHeartbeat && appState.currentUser) {
+                    window.sendGmgPresenceHeartbeat();
+                }
+            });
+            window.addEventListener('focus', () => {
+                if (window.sendGmgPresenceHeartbeat && appState.currentUser) {
+                    window.sendGmgPresenceHeartbeat();
+                }
+            });
+            window.addEventListener('pagehide', () => {
+                if (window.removeGmgPresence && appState.currentUser) {
+                    window.removeGmgPresence();
+                }
+            });
         }
 
         function renderSidebar() {
@@ -4942,6 +5205,33 @@
                 }
             }
 
+            // Real-time Online Users UI synchronization across all devices
+            const onlineUsers = (appState.onlineUsers && appState.onlineUsers.length)
+                ? appState.onlineUsers
+                : (appState.currentUser ? [{
+                    name: (String(appState.currentUser.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || appState.currentUser.isMasterAdmin || appState.currentUser.id === 'MASTER_ADMIN') ? 'الأدمن الرئيسي' : (appState.currentUser.name || 'مستخدم'),
+                    userId: appState.currentUser.id || '',
+                    role: appState.currentUser.role || 'tech',
+                    isSelf: true
+                  }] : []);
+            
+            const onlineCount = onlineUsers.length;
+            const namesSummary = onlineUsers.map(u => u.name + (u.isSelf ? ' (أنت)' : '')).join(' ، ');
+
+            const dashUsersCnt = document.getElementById('dashActiveUsersCount');
+            if (dashUsersCnt) dashUsersCnt.textContent = onlineCount;
+            const dashUsersNames = document.getElementById('dashActiveUsersNames');
+            if (dashUsersNames) dashUsersNames.textContent = namesSummary || '-';
+
+            const headerBadgeText = document.getElementById('headerOnlineUsersText');
+            if (headerBadgeText) {
+                headerBadgeText.textContent = (typeof currentLang !== 'undefined' && currentLang === 'ar') ? `المتصلون: ${onlineCount}` : `Online: ${onlineCount}`;
+            }
+
+            if (window.gmgPro && typeof window.gmgPro.updateActiveUsersUI === 'function') {
+                window.gmgPro.updateActiveUsersUI();
+            }
+
             const recentContainer = document.getElementById('recentAlertsContainer');
             if(!appState.events || appState.events.length === 0) {
                 recentContainer.innerHTML = `<p class="text-slate-400 text-sm text-center py-6">${currentLang==='ar'?'لا توجد أنشطة مسجلة حتى الآن.':'No activities recorded yet.'}</p>`;
@@ -5268,47 +5558,42 @@
                 canvas.height = 512;
                 const ctx = canvas.getContext('2d');
 
-                const grad = ctx.createLinearGradient(0, 0, 512, 512);
-                grad.addColorStop(0, '#0f172a');
-                grad.addColorStop(0.5, '#1e3a8a');
-                grad.addColorStop(1, '#2563eb');
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.roundRect(0, 0, 512, 512, 110);
-                ctx.fill();
-
-                ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
-                ctx.lineWidth = 10;
-                ctx.beginPath();
-                ctx.roundRect(28, 28, 456, 456, 85);
-                ctx.stroke();
+                const bgGrad = ctx.createLinearGradient(0, 0, 512, 512);
+                bgGrad.addColorStop(0, '#060b1a');
+                bgGrad.addColorStop(0.5, '#0b1936');
+                bgGrad.addColorStop(1, '#060b1a');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, 512, 512);
 
                 ctx.save();
-                ctx.translate(256, 215);
-                ctx.fillStyle = '#f59e0b';
-                for (let i = 0; i < 8; i++) {
-                    ctx.rotate(Math.PI / 4);
-                    ctx.fillRect(-22, -130, 44, 38);
-                }
-                ctx.beginPath();
-                ctx.arc(0, 0, 102, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.translate(256, 256);
+                ctx.scale(7.0, 7.0);
+                ctx.translate(-32, -32);
 
-                ctx.fillStyle = '#1e3a8a';
-                ctx.beginPath();
-                ctx.arc(0, 0, 58, 0, Math.PI * 2);
-                ctx.fill();
+                const gradLb = ctx.createLinearGradient(0, 0, 64, 64);
+                gradLb.addColorStop(0, '#1e3a9f');
+                gradLb.addColorStop(1, '#3b82f6');
+                const p1 = new Path2D('M32 2 57.5 16.5v31L32 62 6.5 47.5v-31z');
+                ctx.fillStyle = gradLb;
+                ctx.fill(p1);
 
-                ctx.fillStyle = '#38bdf8';
-                ctx.beginPath();
-                ctx.arc(0, 0, 26, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
+                const p2 = new Path2D('M32 7.5 52.7 19.3v25.4L32 56.5 11.3 44.7V19.3z');
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                ctx.lineWidth = 1.4;
+                ctx.stroke(p2);
 
+                const p3 = new Path2D('M32 13c1 7 12 13 12 25a12 12 0 0 1-24 0c0-6 3-10 6-13 0 4 2 6 4.5 6.5C29 24 29 18 32 13z');
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 92px Inter, Cairo, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('GMG', 256, 435);
+                ctx.fill(p3);
+
+                const gradGa = ctx.createLinearGradient(0, 26, 0, 48);
+                gradGa.addColorStop(0, '#ffc247');
+                gradGa.addColorStop(1, '#f26a1b');
+                const p4 = new Path2D('M32 32c3 3.5 6.5 6 6.5 10a6.5 6.5 0 0 1-13 0c0-3 1.5-5 3.2-6.5.5 2 1.5 2.7 2.6 2.8-.6-2.7.4-4.7.7-6.3z');
+                ctx.fillStyle = gradGa;
+                ctx.fill(p4);
+
+                ctx.restore();
 
                 const iconDataUrl = canvas.toDataURL('image/png');
                 const appleIcon = document.getElementById('pwa-apple-icon');
@@ -5403,76 +5688,111 @@
       const uid=()=> 'pro_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
       const equipDetails=id=>typeof getEquipmentDetails==='function'?getEquipmentDetails(id):null;
       const allEquip=()=>typeof allEquipIds==='function'?allEquipIds():[];
-      const rootPath=['artifacts',window.appId,'public','data'];
-      const directDoc=(...p)=>window.fb&&window.fb.doc(window.fb.db,...rootPath,...p);
-      const directCol=(...p)=>window.fb&&window.fb.collection(window.fb.db,...rootPath,...p);
-      const cloud=fn=>{try{return Promise.resolve(fn()).catch(e=>{console.error(e);if(typeof showToast==='function')showToast(t('تعذر حفظ التغيير في السحابة','Cloud save failed'),'danger')})}catch(e){console.error(e)}};
+      const getAppId = () => window.appId || 'gas-maintenance-group-v9';
+      const rootPath = () => ['artifacts', getAppId(), 'public', 'data'];
+      const directDoc = (...p) => window.fb && window.fb.doc(window.fb.db, ...rootPath(), ...p);
+      const directCol = (...p) => window.fb && window.fb.collection(window.fb.db, ...rootPath(), ...p);
+      const cloud = fn => { try { return Promise.resolve(fn()).catch(e => { console.error(e); if (typeof showToast === 'function') showToast(t('تعذر حفظ التغيير في السحابة', 'Cloud save failed'), 'danger'); }); } catch (e) { console.error(e); } };
 
-      PRO.ensureStyles=()=>{};
-      PRO.modal=(title,body,wide=true)=>{
-        const old=$('gmg-pro-modal'); if(old) old.remove();
-        const m=document.createElement('div');m.id='gmg-pro-modal';m.className='gmg-modal';
-        m.innerHTML=`<div class="${wide?'':'max-w-xl'}"><div class="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b p-4 flex items-center justify-between"><h3 class="font-extrabold text-lg">${title}</h3><button onclick="document.getElementById('gmg-pro-modal').remove()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200"><i class="fas fa-times"></i></button></div><div class="p-4 md:p-6">${body}</div></div>`;
-        document.body.appendChild(m); m.addEventListener('click',e=>{if(e.target===m)m.remove()}); return m;
+      PRO.ensureStyles = () => {};
+      PRO.modal = (title, body, wide = true) => {
+        const old = $('gmg-pro-modal'); if (old) old.remove();
+        const m = document.createElement('div'); m.id = 'gmg-pro-modal'; m.className = 'gmg-modal';
+        m.innerHTML = `<div class="${wide ? '' : 'max-w-xl'}"><div class="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b p-4 flex items-center justify-between"><h3 class="font-extrabold text-lg">${title}</h3><button onclick="document.getElementById('gmg-pro-modal').remove()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200"><i class="fas fa-times"></i></button></div><div class="p-4 md:p-6">${body}</div></div>`;
+        document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.remove(); }); return m;
       };
 
       // Real-time online presence tracking in Firestore
       PRO.onlineUsers = [];
-      PRO.sessionKey = (() => {
-        let k = sessionStorage.getItem('gmg_presence_session');
-        if (!k) { k = 'ses_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); sessionStorage.setItem('gmg_presence_session', k); }
-        return k;
-      })();
-
-      PRO.sendHeartbeat = async () => {
-        try {
-          if (!window.fb || !appState.currentUser) return;
-          const u = appState.currentUser;
-          const docId = String(u.id || u.email || u.name || PRO.sessionKey).replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + PRO.sessionKey.slice(-5);
-          await window.fb.setDoc(directDoc('presence', docId), {
-            name: u.name || 'مستخدم',
-            userId: u.id || '',
-            role: u.role || 'tech',
-            email: u.email || '',
-            lastSeen: Date.now()
-          }, { merge: true });
-        } catch (e) {}
+      PRO.sendHeartbeat = () => {
+        if (typeof window.sendGmgPresenceHeartbeat === 'function') {
+          return window.sendGmgPresenceHeartbeat();
+        }
       };
 
       PRO.startPresence = () => {
-        if (PRO._presenceStarted || !window.fb) return;
-        PRO._presenceStarted = true;
-        PRO.sendHeartbeat();
-        setInterval(PRO.sendHeartbeat, 40000);
-        document.addEventListener('visibilitychange', () => { if (!document.hidden) PRO.sendHeartbeat(); });
-        try {
-          window.fb.onSnapshot(directCol('presence'), (snap) => {
-            const now = Date.now();
-            const activeMap = new Map();
-            snap.forEach(d => {
-              const data = d.data() || {};
-              // Consider active if heartbeat within last 3 minutes (180,000 ms)
-              if (data.name && (now - Number(data.lastSeen || 0) < 180000)) {
-                const key = (data.name + '|' + (data.userId || '')).toLowerCase();
-                if (!activeMap.has(key) || activeMap.get(key).lastSeen < data.lastSeen) {
-                  activeMap.set(key, data);
-                }
-              }
-            });
-            // Always ensure current logged-in user is included
-            if (appState.currentUser && appState.currentUser.name) {
-              const cu = appState.currentUser;
-              const cKey = (cu.name + '|' + (cu.id || '')).toLowerCase();
-              if (!activeMap.has(cKey)) {
-                activeMap.set(cKey, { name: cu.name, userId: cu.id || '', role: cu.role || 'tech', lastSeen: now });
-              }
-            }
-            PRO.onlineUsers = Array.from(activeMap.values());
-            if ($('view-dashboard') && !$('view-dashboard').classList.contains('hidden-view')) {
-              PRO.renderDashboard();
-            }
-          });
-        } catch (e) { console.warn('Presence listen err:', e); }
+        if (typeof window.sendGmgPresenceHeartbeat === 'function') {
+          window.sendGmgPresenceHeartbeat();
+        }
+      };
+
+      PRO.renderOnlineListHtml = (list) => {
+        return list.map(u => {
+          const isMaster = (String(u.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || u.name === 'الأدمن الرئيسي' || u.userId === 'MASTER_ADMIN' || u.isMasterAdmin);
+          const roleLabel = isMaster ? t('الأدمن الرئيسي (Firebase)', 'Master Admin') : (u.role === 'admin' ? t('مشرف', 'Supervisor') : t('فني صيانة', 'Maintenance Technician'));
+          const roleBadgeClass = isMaster ? 'bg-amber-100 text-amber-900 border-amber-300' : (u.role === 'admin' ? 'bg-blue-100 text-blue-900 border-blue-200' : 'bg-slate-100 text-slate-700 border-slate-200');
+          const selfTag = u.isSelf ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full text-[10px] font-bold">${t('أنت (هذا الجهاز)', 'You (This Device)')}</span>` : `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1"></span>${t('متصل من جهاز آخر', 'Online from another device')}</span>`;
+
+          return `
+            <div class="p-3 sm:p-3.5 border rounded-2xl bg-white flex items-center justify-between gap-2.5 shadow-sm hover:border-emerald-300 transition">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="relative flex-shrink-0">
+                  <div class="w-10 h-10 rounded-xl ${isMaster ? 'bg-amber-50 text-amber-600 border border-amber-200' : (u.role === 'admin' ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-slate-100 text-slate-700')} flex items-center justify-center text-lg font-bold">
+                    ${isMaster ? '<i class="fas fa-crown text-amber-500"></i>' : (u.role === 'admin' ? '<i class="fas fa-user-shield text-blue-600"></i>' : '<i class="fas fa-user-gear text-slate-600"></i>')}
+                  </div>
+                  <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full animate-ping"></span>
+                  <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-extrabold text-slate-800 text-sm truncate">${esc(u.name || 'مستخدم')}</span>
+                    <span class="inline-flex items-center border px-2 py-0.5 rounded-full text-[10px] font-bold ${roleBadgeClass}">${roleLabel}</span>
+                    ${u.userId && u.userId !== 'MASTER_ADMIN' && u.userId !== 'SUPERVISOR' ? `<span class="text-[10px] font-mono text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">ID: ${esc(u.userId)}</span>` : ''}
+                  </div>
+                  <div class="flex items-center gap-2 mt-1">
+                    ${selfTag}
+                    ${u.email ? `<span class="text-[10px] font-mono text-slate-400 truncate hidden sm:inline" dir="ltr">${esc(u.email)}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="flex flex-col items-end flex-shrink-0">
+                <span class="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>${t('متصل الآن', 'Online')}</span>
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('') || `<div class="text-center text-slate-400 py-6">${t('لا يوجد مستخدمون متصلون حالياً', 'No users online right now')}</div>`;
+      };
+
+      PRO.updateActiveUsersUI = () => {
+        const list = (appState.onlineUsers && appState.onlineUsers.length)
+          ? appState.onlineUsers
+          : (appState.currentUser ? [{
+              name: (String(appState.currentUser.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || appState.currentUser.isMasterAdmin || appState.currentUser.id === 'MASTER_ADMIN') ? 'الأدمن الرئيسي' : (appState.currentUser.name || 'مستخدم'),
+              userId: appState.currentUser.id || '',
+              role: appState.currentUser.role || 'tech',
+              isSelf: true,
+              lastSeen: Date.now()
+            }] : []);
+
+        const countEl = $('gmg-online-users-count');
+        if (countEl) countEl.textContent = list.length;
+
+        const badgesEl = $('gmg-online-users-badges');
+        if (badgesEl) {
+          badgesEl.innerHTML = list.map(u => {
+            const isMaster = (String(u.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || u.name === 'الأدمن الرئيسي' || u.userId === 'MASTER_ADMIN' || u.isMasterAdmin);
+            const colorCls = isMaster ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-emerald-50 text-emerald-800 border-emerald-200';
+            return `<span class="inline-flex items-center gap-1 ${colorCls} border px-2 py-0.5 rounded-full text-[10px] font-extrabold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>${esc(u.name)}${u.isSelf ? ' (أنت)' : ''}</span>`;
+          }).join(' ') || `<span class="text-[10px] text-slate-400">-</span>`;
+        }
+
+        const dashCount = $('dashActiveUsersCount');
+        if (dashCount) dashCount.textContent = list.length;
+        const dashNames = $('dashActiveUsersNames');
+        if (dashNames) dashNames.textContent = list.map(u => u.name + (u.isSelf ? ' (أنت)' : '')).join(' ، ') || '-';
+
+        const headerBadgeText = $('headerOnlineUsersText');
+        if (headerBadgeText) headerBadgeText.textContent = t(`المتصلون: ${list.length}`, `Online: ${list.length}`);
+
+        const modalList = $('gmg-online-users-modal-list');
+        const modalCount = $('gmg-online-users-modal-count');
+        if (modalList && typeof PRO.renderOnlineListHtml === 'function') {
+          modalList.innerHTML = PRO.renderOnlineListHtml(list);
+          if (modalCount) modalCount.textContent = list.length;
+        }
       };
 
       PRO.renderDashboard=async()=>{
@@ -5511,10 +5831,10 @@
             <button onclick="gmgPro.users()" class="gmg-pro-card gmg-kpi p-3 text-right hover:shadow-md col-span-2 md:col-span-1">
               <div class="flex items-center justify-between">
                 <span class="w-9 h-9 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">👨‍🔧</span>
-                <span class="num text-cyan-600">${onlineList.length}</span>
+                <span id="gmg-online-users-count" class="num text-cyan-600">${onlineList.length}</span>
               </div>
               <div class="text-[10px] text-slate-500 font-bold mt-1.5">${t('مستخدمون نشطون الآن','Online Users Now')}</div>
-              <div class="flex flex-wrap gap-1 mt-1.5 max-h-14 overflow-y-auto">${onlineNamesBadges || `<span class="text-[10px] text-slate-400">-</span>`}</div>
+              <div id="gmg-online-users-badges" class="flex flex-wrap gap-1 mt-1.5 max-h-14 overflow-y-auto">${onlineNamesBadges || `<span class="text-[10px] text-slate-400">-</span>`}</div>
             </button>
           </div>
           <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
@@ -5738,35 +6058,39 @@
       };
       PRO.exportProReport=()=>{const alerts=appState.alerts||[];let rows=alerts.map(a=>`<tr><td>${esc(a.factoryName||'')}</td><td>${esc(a.equipName||'')}</td><td>${esc(a.description||'')}</td><td>${esc(a.user||'')}</td><td>${esc(a.assignedTo||'')}</td><td>${esc(a.workflowStatus||a.status||'')}</td><td>${a.date?new Date(a.date).toLocaleString('ar-SA'):''}</td><td>${a.resolvedDate?new Date(a.resolvedDate).toLocaleString('ar-SA'):''}</td></tr>`).join('');const table=`<table border="1" class="gmg-table"><thead><tr><th>المصنع</th><th>المعدة</th><th>العطل</th><th>المبلغ</th><th>المسند إليه</th><th>الحالة</th><th>البلاغ</th><th>الإغلاق</th></tr></thead><tbody>${rows}</tbody></table>`;if(typeof triggerExcelExport==='function')triggerExcelExport(table,`GMG_Professional_Report_${new Date().toISOString().slice(0,10)}.xls`,t('تقرير GMG الاحترافي','GMG Professional Report'))};
 
-      PRO.users=()=>{
-        const onlineList = (PRO.onlineUsers && PRO.onlineUsers.length)
-          ? PRO.onlineUsers
-          : (appState.currentUser ? [{ name: appState.currentUser.name, userId: appState.currentUser.id, role: appState.currentUser.role, lastSeen: Date.now() }] : []);
-        const body=`
+      PRO.users = () => {
+        const list = (appState.onlineUsers && appState.onlineUsers.length)
+          ? appState.onlineUsers
+          : (appState.currentUser ? [{
+              name: (String(appState.currentUser.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || appState.currentUser.isMasterAdmin || appState.currentUser.id === 'MASTER_ADMIN') ? 'الأدمن الرئيسي' : (appState.currentUser.name || 'مستخدم'),
+              userId: appState.currentUser.id || '',
+              role: appState.currentUser.role || 'tech',
+              isSelf: true,
+              lastSeen: Date.now()
+            }] : []);
+
+        const body = `
           <div class="space-y-4">
-            <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
-              <div>
-                <h4 class="font-extrabold text-emerald-950 text-sm"><i class="fas fa-signal text-emerald-600 ml-1"></i> ${t('المستخدمون المتصلون الآن بالتطبيق (مباشر)','Currently Online Users (Live)')}</h4>
-                <p class="text-xs text-emerald-700 mt-0.5">${t('تظهر هنا أسماء جميع الفنيين والمشرفين الفاتحين للتطبيق حالياً','Displays all technicians and supervisors currently active in the app')}</p>
-              </div>
-              <span class="bg-emerald-600 text-white font-extrabold px-3 py-1 rounded-full text-sm">${onlineList.length}</span>
-            </div>
-            <div class="space-y-2">
-              ${onlineList.map(u => `
-                <div class="p-3 border rounded-xl bg-white flex items-center justify-between gap-3 shadow-sm">
-                  <div class="flex items-center gap-2.5">
-                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <div>
-                      <div class="font-extrabold text-slate-800 text-sm">${esc(u.name || 'مستخدم')}</div>
-                      <div class="text-[11px] text-slate-500">${u.role === 'admin' ? t('مشرف / أدمن','Supervisor / Admin') : t('فني صيانة','Maintenance Technician')} ${u.userId ? `• ID: ${esc(u.userId)}` : ''}</div>
-                    </div>
-                  </div>
-                  <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">${t('متصل الآن','Online Now')}</span>
+            <div class="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow flex-shrink-0">
+                  <i class="fas fa-signal"></i>
                 </div>
-              `).join('') || `<div class="text-center text-slate-400 py-6">${t('لا يوجد مستخدمون متصلون حالياً','No users online right now')}</div>`}
+                <div class="min-w-0">
+                  <h4 class="font-extrabold text-emerald-950 text-sm sm:text-base">${t('المستخدمون المتصلون الآن بالتطبيق (مزامنة لحظية سحابية)', 'Live Cloud Active Users')}</h4>
+                  <p class="text-xs text-emerald-700 mt-0.5">${t('تحديث سحابي لحظي لجميع الفنيين والمشرفين الفاتحين للتطبيق من أي هاتف أو كمبيوتر', 'Instant cloud sync for all technicians and supervisors active on any device')}</p>
+                </div>
+              </div>
+              <div class="bg-white border border-emerald-300 rounded-2xl px-3.5 py-2 text-center shadow-inner flex-shrink-0">
+                <span id="gmg-online-users-modal-count" class="block text-2xl font-extrabold text-emerald-700 leading-none">${list.length}</span>
+                <span class="text-[10px] font-bold text-slate-500 mt-1 block">${t('متصل الآن', 'Active Now')}</span>
+              </div>
+            </div>
+            <div id="gmg-online-users-modal-list" class="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+              ${PRO.renderOnlineListHtml(list)}
             </div>
           </div>`;
-        PRO.modal(t('المستخدمون الفاتحون للتطبيق الآن','Active Online Users'),body,false);
+        PRO.modal(t('المستخدمون النشطون الآن في النظام', 'Active Online Users'), body, false);
       };
       
       // 1. مخزن قطع الغيار والزيوت المصغر (Spare Parts & Oil Stock)
