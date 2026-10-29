@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Gas Maint">
-    <link rel="apple-touch-icon" id="pwa-apple-icon">
-    <link rel="icon" type="image/png" id="pwa-favicon">
-    <link rel="manifest" id="pwa-manifest">
+    <link rel="apple-touch-icon" id="pwa-apple-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" id="pwa-favicon" href="icon-192.png">
+    <link rel="manifest" id="pwa-manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -5617,7 +5617,7 @@
                     ]
                 };
                 const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
-                document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+                const mEl = document.getElementById('pwa-manifest'); if (mEl && !mEl.getAttribute('href')) mEl.setAttribute('href', URL.createObjectURL(manifestBlob));
                 checkPwaInstalledState();
             } catch (e) { console.log('PWA icon init error:', e); }
         })();
