@@ -51,3 +51,6 @@ messaging.onBackgroundMessage(function(payload) {
     data: { url }
   });
 });
+
+// معالج fetch بسيط (تمرير فقط) حتى يعتبر المتصفح الموقع قابلاً للتثبيت كتطبيق
+self.addEventListener('fetch', function() {});

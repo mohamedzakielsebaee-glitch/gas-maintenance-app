@@ -1,34 +1,18 @@
 {
   "id": "./",
   "name": "Gas Maintenance Group",
-  "short_name": "GMG",
-  "description": "منظومة GMG للصيانة الذكية — صيانة أذكى، أداء أعلى",
+  "short_name": "Gas Maint",
+  "description": "نظام إدارة الصيانة الدورية والفحوصات اليومية والأعطال الطارئة",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#060b1a",
+  "background_color": "#0f172a",
   "theme_color": "#1e3a8a",
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

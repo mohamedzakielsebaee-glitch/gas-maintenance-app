@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Gas Maint">
     <link rel="apple-touch-icon" id="pwa-apple-icon">
     <link rel="icon" type="image/png" id="pwa-favicon">
-    <link rel="manifest" id="pwa-manifest">
+    <link rel="manifest" id="pwa-manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -56,7 +56,23 @@
         window.firebaseSignOut = signOut;
         window.firebaseCollection = collection;
         window.firebaseGetDocs = getDocs;
-        window.fb = { db, doc, setDoc, getDoc, deleteDoc, onSnapshot, collection, getDocs, query, orderBy, limit, where, writeBatch, arrayUnion, arrayRemove };
+        // ===== حارس وضع المشاهدة: حساب المشاهدة لا يكتب في قاعدة البيانات إلا (الحضور) و(توكن الإشعارات) =====
+        const gmgViewerNow = () => { try { return typeof window.gmgIsViewer === 'function' && window.gmgIsViewer(); } catch (e) { return false; } };
+        const gmgViewerOk = (ref) => /\/(presence|fcmTokens)\//.test(String((ref && ref.path) || ''));
+        const gmgViewerBlocked = () => { try { if (window.gmgViewerBlockedNotice) window.gmgViewerBlockedNotice(); } catch (e) {} };
+        const guardedSetDoc = (ref, ...rest) => (gmgViewerNow() && !gmgViewerOk(ref)) ? (gmgViewerBlocked(), Promise.resolve()) : setDoc(ref, ...rest);
+        const guardedDeleteDoc = (ref, ...rest) => (gmgViewerNow() && !gmgViewerOk(ref)) ? (gmgViewerBlocked(), Promise.resolve()) : deleteDoc(ref, ...rest);
+        const guardedWriteBatch = (database) => {
+            const b = writeBatch(database);
+            const w = {
+                set: (...a) => { if (!gmgViewerNow()) b.set(...a); return w; },
+                update: (...a) => { if (!gmgViewerNow()) b.update(...a); return w; },
+                delete: (...a) => { if (!gmgViewerNow()) b.delete(...a); return w; },
+                commit: () => { if (gmgViewerNow()) { gmgViewerBlocked(); return Promise.resolve(); } return b.commit(); }
+            };
+            return w;
+        };
+        window.fb = { db, doc, setDoc: guardedSetDoc, getDoc, deleteDoc: guardedDeleteDoc, onSnapshot, collection, getDocs, query, orderBy, limit, where, writeBatch: guardedWriteBatch, arrayUnion, arrayRemove };
 
         const VAPID_KEY = 'BA7OQYZQ_WjIR2I5lHhET67VDtaZgVVOtN1luCRI8fGW2Tei5tFXsPrMW6TTAYntI7FbxJOAMScf1eY-ZjZ66Sk';
         window.gmgGetPushToken = async (reg) => {
@@ -560,6 +576,32 @@
                                     <div id="approved-techs-list" class="space-y-1.5 max-h-56 overflow-y-auto pr-1"></div>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- 4. حسابات المشاهدة فقط (للأدمن الرئيسي والمشرفين) -->
+                        <div id="viewer-accounts-box" class="bg-sky-50/70 p-4 rounded-xl border border-sky-200 space-y-3">
+                            <div class="flex items-center justify-between border-b border-sky-200 pb-2">
+                                <h4 class="font-extrabold text-sky-950 text-sm flex items-center gap-2">
+                                    <i class="fas fa-eye text-sky-600"></i>
+                                    <span>إضافة حسابات المشاهدة فقط (عرض بدون إدخال أو تعديل)</span>
+                                </h4>
+                                <span class="text-[10px] font-extrabold bg-sky-100 text-sky-900 px-2 py-0.5 rounded-full border border-sky-300">للأدمن والمشرف</span>
+                            </div>
+                            <p class="text-[11px] text-sky-900 leading-relaxed">صاحب هذا الحساب يتجول في التطبيق ويشاهد كل الحركة والبلاغات والسجلات، لكنه لا يستطيع إضافة أو تعديل أو حذف أي شيء. يدخل من نفس شاشة دخول الفنيين: يكتب اسمه، ويكتب الرقم السري في خانتي "الرقم الوظيفي" و"الرمز السري".</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">الاسم <span class="text-red-500">*</span></label>
+                                    <input type="text" id="viewer-new-name" class="w-full border rounded-lg px-3 py-1.5 text-sm bg-white" placeholder="اسم المشاهد">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">الرقم السري (4 أحرف أو أرقام على الأقل) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="viewer-new-pin" dir="ltr" class="w-full border rounded-lg px-3 py-1.5 text-sm bg-white font-mono text-left" placeholder="مثال: 482915">
+                                </div>
+                            </div>
+                            <button type="button" onclick="saveViewerAccount()" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg text-xs sm:text-sm transition shadow flex items-center justify-center gap-2">
+                                <i class="fas fa-user-plus"></i> <span>إضافة / تحديث حساب مشاهدة</span>
+                            </button>
+                            <div id="viewer-accounts-list" class="pt-2 border-t border-sky-200 space-y-1.5"></div>
                         </div>
 
                         <!-- 3. قسم ربط وتوحيد بيانات وإجراءات الفنيين القديمة بالحسابات الجديدة -->
@@ -1304,8 +1346,27 @@
             navigator.serviceWorker?.getRegistration().then(r => r ? r.showNotification(title, o) : new Notification(title, o));
         }
 
+        const GMG_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwmVDjD7NusNibNKNDp3jMGheJD4-63WCR3G87l3m7K-znMUGbp6B1IMDyF8qdlw6De4Q/exec";
+        const GMG_EVENT_LABELS = {
+            issue: '🚨 بلاغ عطل جديد', issue_resolved: '✅ تم إصلاح عطل', issue_skipped: '↪️ إحالة / تخطي عطل',
+            issue_assigned: '👷 تعيين فني على عطل', issue_updated: '✏️ تحديث على بلاغ',
+            daily_insp: '📋 فحص يومي', hours: '⏱️ تحديث ساعات التشغيل', cycle_done: '🔧 صيانة دورية (دورة ساعات)',
+            factory_pm_done: '✅ إنجاز بند صيانة', pm_updated: '🛠️ تحديث بنود الصيانة', equip_removed: '🗑️ حذف معدة'
+        };
+        function sendTelegramEvent(actionKey, details) {
+            try {
+                const u = appState.currentUser || { name: 'النظام' };
+                fetch(GMG_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ telegram_only: true, event_type: actionKey, title: GMG_EVENT_LABELS[actionKey] || '🔔 حدث جديد', details: String(details || ''), user_name: String(u.name || ''), tokens: [] }),
+                    mode: 'no-cors'
+                });
+            } catch (e) {}
+        }
+
         async function sendExternalWebhook(type, title, details) {
-            const webhookUrl = "https://script.google.com/macros/s/AKfycbwmVDjD7NusNibNKNDp3jMGheJD4-63WCR3G87l3m7K-znMUGbp6B1IMDyF8qdlw6De4Q/exec";
+            const webhookUrl = GMG_WEBHOOK_URL;
             let fcmTokens = [];
             try {
                 if (window.firebaseCollection && window.firebaseDb && !window.firebaseOfflineMode) {
@@ -1673,11 +1734,23 @@
                     appState.usersConfig = {
                         techs: Array.isArray(raw.users.techs) ? raw.users.techs : [],
                         supervisors: Array.isArray(raw.users.supervisors) ? raw.users.supervisors : [],
+                        viewers: Array.isArray(raw.users.viewers) ? raw.users.viewers : [],
                         disableDefaultAdmin: !!raw.users.disableDefaultAdmin,
                         enforceTechPin: raw.users.enforceTechPin !== undefined ? !!raw.users.enforceTechPin : true
                     };
                     if (typeof refreshLoginRosterUI === 'function') refreshLoginRosterUI();
                     if (typeof renderAdminUsersSection === 'function' && !document.getElementById('view-admin').classList.contains('hidden-view')) renderAdminUsersSection();
+                    try {
+                        const cu = appState.currentUser;
+                        if (cu && cu.role === 'viewer' && s.exists() && !(s.metadata && s.metadata.fromCache)) {
+                            const vv = (appState.usersConfig.viewers || []).find(x => x.vid === cu.id);
+                            if (!vv || String(vv.updatedAt || '') !== String(cu.ver || '')) {
+                                appState.currentUser = null; localStorage.removeItem('gmg_user');
+                                showToast('تم تعديل أو حذف حساب المشاهدة. سجّل الدخول من جديد.', 'danger');
+                                setTimeout(() => location.reload(), 1500);
+                            }
+                        }
+                    } catch (e) {}
                     h.onChange('users');
                 }, err('users')));
                 unsubs.push(f.onSnapshot(col('presence'), (s) => {
@@ -2316,6 +2389,7 @@
 
         function logEvent(actionKey, details, equipId = null, extraId = null) {
             if (!appState.currentUser) return;
+            if (appState.currentUser.role === 'viewer') return;
             const evId = 'ev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
             notifiedEventIds.add(evId);
             const newEvent = {
@@ -2329,6 +2403,7 @@
                 time: new Date().toISOString()
             };
             cloudWrite(GMG.addEvent(newEvent));
+            sendTelegramEvent(actionKey, details);
         }
 
         function getPendingTasks(equipId) {
@@ -2500,9 +2575,48 @@
             return String(u.email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL || u.isMasterAdmin === true;
         }
 
+        // ===== وضع المشاهدة فقط (Viewer) =====
+        window.gmgIsViewer = function() { return !!(appState.currentUser && appState.currentUser.role === 'viewer'); };
+        window._gmgLastGesture = 0;
+        ['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { window._gmgLastGesture = Date.now(); }, true));
+        window.gmgViewerBlockedNotice = function(force) {
+            const now = Date.now();
+            if (!force && now - window._gmgLastGesture > 2500) return;
+            if (now - (window._gmgLastNotice || 0) < 2500) return;
+            window._gmgLastNotice = now;
+            try { showToast('🔒 حساب مشاهدة فقط: لا يمكن الإدخال أو التعديل أو الحذف', 'danger'); } catch (e) {}
+        };
+        const GMG_VIEWER_BLOCK_WINDOW = ['openReportIssue', 'openHoursManagement', 'showAddInspectionForm', 'recordMaintenanceCycle', 'resolveIssue', 'reopenIssue', 'skipIssue', 'completeDueTask', 'completeEquipTask', 'completeEquipTaskByIdx', 'addPmTask', 'removePmTask', 'removeEquipment', 'editInspectionRecord', 'editCycleRecord', 'editIssueParticipant', 'addOrUpdateIssueParticipant', 'saveEditedIssueDesc', 'toggleEditIssueDesc', 'adjustInventoryQty', 'gmgInvEdit', 'saveQuickManualUrl', 'prefillPmTaskEdit', 'showAdminSettings'];
+        const GMG_VIEWER_BLOCK_PRO = ['openEmergency', 'submitEmergency', 'saveIssue', 'assign', 'saveAssignment', 'resolve'];
+        window.gmgSetupViewerUI = function() {
+            const on = window.gmgIsViewer();
+            document.body.classList.toggle('gmg-viewer', on);
+            if (!on) return;
+            if (!document.getElementById('gmg-viewer-style')) {
+                const st = document.createElement('style'); st.id = 'gmg-viewer-style';
+                const sel = GMG_VIEWER_BLOCK_WINDOW.map(n => `body.gmg-viewer [onclick*="${n}("]`).concat(GMG_VIEWER_BLOCK_PRO.map(n => `body.gmg-viewer [onclick*="gmgPro.${n}("]`)).join(',');
+                st.textContent = sel + '{display:none !important}';
+                document.head.appendChild(st);
+            }
+            if (!document.getElementById('gmg-viewer-badge')) {
+                const bd = document.createElement('div'); bd.id = 'gmg-viewer-badge';
+                bd.textContent = '👁 وضع المشاهدة فقط';
+                bd.style.cssText = 'position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:9999;background:#0369a1;color:#fff;font:700 11px Cairo,Arial,sans-serif;padding:3px 12px;border-radius:999px;opacity:.92;pointer-events:none';
+                document.body.appendChild(bd);
+            }
+            const guard = (obj, names) => names.forEach(n => {
+                const f = obj && obj[n];
+                if (typeof f !== 'function' || f._gmgViewerGuard) return;
+                const g = function() { if (window.gmgIsViewer()) { window.gmgViewerBlockedNotice(true); return; } return f.apply(this, arguments); };
+                g._gmgViewerGuard = true; obj[n] = g;
+            });
+            guard(window, GMG_VIEWER_BLOCK_WINDOW); guard(window.gmgPro, GMG_VIEWER_BLOCK_PRO);
+            if (!window._gmgViewerRetry) window._gmgViewerRetry = setTimeout(() => { window._gmgViewerRetry = null; guard(window, GMG_VIEWER_BLOCK_WINDOW); guard(window.gmgPro, GMG_VIEWER_BLOCK_PRO); }, 2000);
+        };
+
         function getUsersConfig() {
             if (!appState.usersConfig) {
-                appState.usersConfig = { techs: [], supervisors: [], disableDefaultAdmin: true, enforceTechPin: true };
+                appState.usersConfig = { techs: [], supervisors: [], viewers: [], disableDefaultAdmin: true, enforceTechPin: true };
             }
             return appState.usersConfig;
         }
@@ -2581,6 +2695,19 @@
             const pin = document.getElementById('login-tech-pin')?.value?.trim() || '';
             const cfg = getUsersConfig();
             const techs = cfg.techs || [];
+
+            // دخول حساب المشاهدة من نفس شاشة دخول الفنيين: الاسم + الرقم السري (في خانة الرقم الوظيفي أو الرمز السري)
+            const _viewerHit = (cfg.viewers || []).find(v => {
+                const vp = String(v.pin || '').trim();
+                return vp !== '' && String(v.name || '').trim().toLowerCase() === rawName.toLowerCase() && (vp === pin || vp === rawId);
+            });
+            if (_viewerHit) {
+                appState.currentUser = { role: 'viewer', isViewer: true, name: _viewerHit.name, id: _viewerHit.vid, ver: String(_viewerHit.updatedAt || '') };
+                localStorage.setItem('gmg_user', JSON.stringify(appState.currentUser));
+                if (window.sendGmgPresenceHeartbeat) window.sendGmgPresenceHeartbeat();
+                initApp();
+                return;
+            }
 
             if (techs.length > 0) {
                 const normName = rawName.toLowerCase();
@@ -2718,7 +2845,7 @@
             if (document.getElementById('sidebarUserId')) {
                 document.getElementById('sidebarUserId').textContent = isAdminOrSup
                     ? (isMasterAdminUser(u) ? `الأدمن الرئيسي (${u.email || MASTER_ADMIN_EMAIL})` : `مشرف (${u.email || 'Supervisor'})`)
-                    : `فني صيانة | ID: ${u.id}`;
+                    : (u.role === 'viewer' ? 'مشاهد | عرض فقط' : `فني صيانة | ID: ${u.id}`);
             }
             
             const adminBtn = document.getElementById('adminSettingsBtn');
@@ -2735,6 +2862,7 @@
             }
 
             initPush(); checkPwaInstalledState();
+            if (typeof gmgSetupViewerUI === 'function') gmgSetupViewerUI();
             if (window.sendGmgPresenceHeartbeat) {
                 window.sendGmgPresenceHeartbeat();
             }
@@ -4156,6 +4284,8 @@
                 supListEl.innerHTML = '<div class="text-[11px] font-bold text-slate-600 mb-1">حسابات الإدارة والمشرفين:</div>' + masterCard + supCards;
             }
 
+            if (typeof renderViewerAccountsList === 'function') renderViewerAccountsList();
+
             // Enforce Tech PIN checkbox
             const enforceChk = document.getElementById('enforce-tech-pin-toggle');
             if (enforceChk) enforceChk.checked = !!cfg.enforceTechPin;
@@ -4232,6 +4362,78 @@
             renderAdminUsersSection();
             refreshLoginRosterUI();
             showToast(`تم حفظ حساب المشرف (${email}) بنجاح!`, 'success');
+        };
+
+        window.renderViewerAccountsList = function() {
+            const el = document.getElementById('viewer-accounts-list');
+            if (!el) return;
+            const viewers = getUsersConfig().viewers || [];
+            if (!viewers.length) {
+                el.innerHTML = '<div class="text-xs text-slate-400 text-center py-3 bg-white rounded-lg border">لا توجد حسابات مشاهدة بعد.</div>';
+                return;
+            }
+            el.innerHTML = '<div class="text-[11px] font-bold text-slate-600 mb-1">حسابات المشاهدة (' + viewers.length + '):</div>' + viewers.map((v, idx) => `
+                <div class="flex items-center justify-between gap-2 bg-white p-2 rounded-lg border border-slate-200 text-xs">
+                    <div class="min-w-0 flex items-center gap-1.5 flex-wrap">
+                        <i class="fas fa-eye text-sky-600"></i>
+                        <span class="font-bold text-slate-800">${escapeHTML(v.name)}</span>
+                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-mono text-[10px]">PIN: ${escapeHTML(v.pin)}</span>
+                    </div>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <button type="button" onclick="editViewerAccount(${idx})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg text-[11px] font-bold"><i class="fas fa-pen"></i> تعديل</button>
+                        <button type="button" onclick="removeViewerAccount(${idx})" class="bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-lg text-[11px]"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`).join('');
+        };
+
+        window.saveViewerAccount = async function() {
+            if (appState.currentUser?.role !== 'admin') {
+                showToast('إضافة حسابات المشاهدة متاحة للأدمن والمشرفين فقط', 'danger');
+                return;
+            }
+            const name = document.getElementById('viewer-new-name')?.value?.trim() || '';
+            const pin = document.getElementById('viewer-new-pin')?.value?.trim() || '';
+            if (!name) { showToast('يرجى إدخال اسم حساب المشاهدة', 'danger'); return; }
+            if (pin.length < 4) { showToast('الرقم السري لا يقل عن 4 أحرف أو أرقام', 'danger'); return; }
+            const cfg = getUsersConfig();
+            if (!Array.isArray(cfg.viewers)) cfg.viewers = [];
+            const idx = cfg.viewers.findIndex(v => String(v.name || '').trim().toLowerCase() === name.toLowerCase());
+            const entry = {
+                vid: idx >= 0 && cfg.viewers[idx].vid ? cfg.viewers[idx].vid : 'VIEW-' + Date.now().toString(36),
+                name: name,
+                pin: pin,
+                updatedAt: new Date().toISOString()
+            };
+            if (idx >= 0) cfg.viewers[idx] = entry; else cfg.viewers.push(entry);
+            await cloudWrite(GMG.saveUsersConfig(cfg));
+            document.getElementById('viewer-new-name').value = '';
+            document.getElementById('viewer-new-pin').value = '';
+            renderViewerAccountsList();
+            showToast(`تم حفظ حساب المشاهدة (${name}) بنجاح`, 'success');
+        };
+
+        window.editViewerAccount = function(idx) {
+            const v = (getUsersConfig().viewers || [])[idx];
+            if (!v) return;
+            document.getElementById('viewer-new-name').value = v.name || '';
+            document.getElementById('viewer-new-pin').value = v.pin || '';
+            document.getElementById('viewer-new-name').focus();
+        };
+
+        window.removeViewerAccount = function(idx) {
+            if (appState.currentUser?.role !== 'admin') {
+                showToast('حذف حسابات المشاهدة متاح للأدمن والمشرفين فقط', 'danger');
+                return;
+            }
+            const cfg = getUsersConfig();
+            const target = (cfg.viewers || [])[idx];
+            if (!target) return;
+            openConfirmModal(`حذف حساب المشاهدة (${target.name})؟`, function() {
+                cfg.viewers.splice(idx, 1);
+                cloudWrite(GMG.saveUsersConfig(cfg));
+                renderViewerAccountsList();
+                showToast('تم حذف حساب المشاهدة', 'info');
+            });
         };
 
         window.sendResetFromAdminPanel = async function(targetEmail) {
@@ -5617,7 +5819,7 @@
                     ]
                 };
                 const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/json' });
-                document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+                /* المانيفست أصبح ملفاً ثابتاً manifest.json (أصلح مشكلة التثبيت كتطبيق على الأندرويد) */
                 checkPwaInstalledState();
             } catch (e) { console.log('PWA icon init error:', e); }
         })();
@@ -5719,7 +5921,7 @@
       PRO.renderOnlineListHtml = (list) => {
         return list.map(u => {
           const isMaster = (String(u.email || '').toLowerCase() === 'semsemwebas24@gmail.com' || u.name === 'الأدمن الرئيسي' || u.userId === 'MASTER_ADMIN' || u.isMasterAdmin);
-          const roleLabel = isMaster ? t('الأدمن الرئيسي (Firebase)', 'Master Admin') : (u.role === 'admin' ? t('مشرف', 'Supervisor') : t('فني صيانة', 'Maintenance Technician'));
+          const roleLabel = isMaster ? t('الأدمن الرئيسي (Firebase)', 'Master Admin') : (u.role === 'admin' ? t('مشرف', 'Supervisor') : (u.role === 'viewer' ? t('مشاهد (عرض فقط)', 'Viewer (read-only)') : t('فني صيانة', 'Maintenance Technician')));
           const roleBadgeClass = isMaster ? 'bg-amber-100 text-amber-900 border-amber-300' : (u.role === 'admin' ? 'bg-blue-100 text-blue-900 border-blue-200' : 'bg-slate-100 text-slate-700 border-slate-200');
           const selfTag = u.isSelf ? `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full text-[10px] font-bold">${t('أنت (هذا الجهاز)', 'You (This Device)')}</span>` : `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1"></span>${t('متصل من جهاز آخر', 'Online from another device')}</span>`;
 
