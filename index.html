@@ -6649,8 +6649,8 @@
       #gmgDailyCenter th{background:#e8edf4;color:#172554;font-weight:800}
       #gmgDailyCenter .gdc-section-title{background:#dce7f5;color:#17365d;font-weight:900;padding:9px;border:1px solid #64748b}
       .gdc-print-page{background:#fff;color:#111827;padding:12mm;max-width:100%;margin:0 auto 16px}
-      .gdc-print-head{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #2865a5;padding-bottom:10px;margin-bottom:12px}
-      .gdc-print-logo{width:190px;max-height:76px;object-fit:contain;object-position:right center}
+      .gdc-print-head{display:flex;flex-direction:row;direction:ltr;align-items:center;justify-content:space-between;border-bottom:3px solid #2865a5;padding:0 0 10px;margin-bottom:12px;width:100%;box-sizing:border-box}
+      .gdc-print-logo{display:block;width:190px;height:76px;max-width:28%;object-fit:contain;object-position:right center;flex:0 0 auto;background:transparent;print-color-adjust:exact;-webkit-print-color-adjust:exact}
       .gdc-print-title{text-align:center;font:bold 18px Arial,sans-serif;margin:10px 0 4px}
       .gdc-print-sub{text-align:center;font:12px Arial,sans-serif;margin-bottom:14px;color:#334155}
       .gdc-print-meta{display:flex;justify-content:space-between;font:12px Arial,sans-serif;margin:10px 0}
@@ -6803,7 +6803,7 @@
       const names=[...new Set(items.map(x=>x.record.userName).filter(Boolean))];
       const dateLabel=selectedDate==='all'?'All Dates':selectedDate;
       pages += `<section class="gdc-print-page">
-        <header class="gdc-print-head"><div><b style="font:800 20px Arial;color:#2865a5">RAJHI STEEL</b><div style="font:10px Arial;color:#64748b">UTILITY MAINTENANCE DEPARTMENT</div></div><img class="gdc-print-logo" src="${LOGO}"></header>
+        <header class="gdc-print-head"><img class="gdc-print-logo" src="${LOGO}" alt="Rajhi Steel Company Logo"><div style="text-align:right;direction:ltr;flex:1"><b style="font:800 20px Arial;color:#2865a5;letter-spacing:1px">RAJHI STEEL</b><div style="font:10px Arial;color:#64748b;margin-top:3px">UTILITY MAINTENANCE DEPARTMENT</div></div></header>
         <div class="gdc-print-title">UTILITY MAINTENANCE DAILY CHECK SHEET</div>
         <div class="gdc-print-sub">${esc(f.name)} — DAILY INSPECTION REPORT</div>
         <div class="gdc-print-meta"><span><b>Factory:</b> ${esc(f.name)}</span><span><b>Date:</b> ${esc(dateLabel)}</span><span><b>Total inspected:</b> ${items.length}</span></div>
@@ -6822,7 +6822,11 @@
     document.body.classList.add('gdc-printing');
     const done=()=>{document.body.classList.remove('gdc-printing');window.removeEventListener('afterprint',done);};
     window.addEventListener('afterprint',done);
-    window.print();
+    // Ensure the embedded company logo is fully decoded before the PDF/print snapshot.
+    Promise.all(Array.from(root.querySelectorAll('img')).map(img =>
+      img.decode ? img.decode().catch(() => {}) :
+      new Promise(resolve => { if (img.complete) resolve(); else { img.onload=resolve; img.onerror=resolve; } })
+    )).then(() => requestAnimationFrame(() => requestAnimationFrame(() => window.print())));
   };
   window.exportDailyInspectionExcel = function(){
     const rows=filtered();
