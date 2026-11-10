@@ -3015,7 +3015,35 @@
             });
         }
 
-        function initApp() {
+        
+    // Preload latest inspections for all equipment to keep AI informed of real-time readings
+    window.gmgPreloadAllInspections = async function() {
+        if (!window.GMG || !window.GMG.fetchAllByEquip || typeof allEquipIds !== 'function') return;
+        try {
+            const ids = allEquipIds();
+            const map = await GMG.fetchAllByEquip('inspections', ids);
+            if (map && typeof map === 'object') {
+                if (!appState.dailyInspections) appState.dailyInspections = {};
+                if (!appState.latestInspections) appState.latestInspections = {};
+                Object.keys(map).forEach(eqId => {
+                    const list = map[eqId] || [];
+                    if (list.length) {
+                        appState.dailyInspections[eqId] = list;
+                        const sorted = list.slice().sort((a,b) => String(b.date).localeCompare(String(a.date)));
+                        appState.latestInspections[eqId] = sorted[0];
+                    }
+                });
+                try {
+                    localStorage.setItem('gmg_latest_inspections', JSON.stringify(appState.latestInspections));
+                } catch (e) {}
+            }
+        } catch (e) {
+            console.warn('Preload inspections background err:', e);
+        }
+    };
+
+    function initApp() {
+        setTimeout(window.gmgPreloadAllInspections, 1500);
             const skel = document.getElementById('skeleton-loader');
             if (skel) skel.classList.add('hidden-view');
             if (!appState.currentUser) { document.getElementById('loginOverlay').classList.remove('hidden'); return; }
@@ -3864,6 +3892,9 @@
             };
 
             appState.dailyInspections[id].push(record);
+            if (!appState.latestInspections) appState.latestInspections = {};
+            appState.latestInspections[id] = record;
+            try { localStorage.setItem('gmg_latest_inspections', JSON.stringify(appState.latestInspections)); } catch (e) {}
             cloudWrite(GMG.addInspection(id, record));
 
             if(details) logEvent('daily_insp', `${details.equipment.name} (${details.factory.name})`, id);
@@ -7224,11 +7255,22 @@ window.gmgAi = (function () {
 
     function getLiveContext() {
         var factories = (typeof appState !== 'undefined' && appState.factories) ? appState.factories : [];
+        if (!appState.latestInspections) {
+            try {
+                appState.latestInspections = JSON.parse(localStorage.getItem('gmg_latest_inspections') || '{}');
+            } catch (e) {
+                appState.latestInspections = {};
+            }
+        }
+
         var allEquips = [];
         factories.forEach(function (f) {
             (f.departments || []).forEach(function (d) {
                 (d.equipment || []).forEach(function (e) {
-                    allEquips.push({ equip: e, factory: f, dept: d });
+                    var latestRec = (appState.latestInspections && appState.latestInspections[e.id]) ||
+                        (appState.dailyInspections && appState.dailyInspections[e.id] && appState.dailyInspections[e.id].slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); })[0]) || null;
+                    var latestData = (latestRec && latestRec.data) ? latestRec.data : {};
+                    allEquips.push({ equip: e, factory: f, dept: d, latestRec: latestRec, latestData: latestData });
                 });
             });
         });
@@ -7618,13 +7660,157 @@ window.gmgAi = (function () {
     }
 
     function answerFreeExpertQuery(userQuery) {
-        var q = String(userQuery || '').toLowerCase().trim();
+        var rawQ = String(userQuery || '').trim();
+        var q = rawQ.toLowerCase();
         var ctx = getLiveContext();
 
-        // 1. فحص السؤال عن معدة معينة في مصنع معين وإرجاع الرد "على قد السؤال"
-        var targetEquip = findTargetEquipment(q, ctx.equipmentList);
-        if (targetEquip) {
-            return formatDirectEquipmentResponse(targetEquip, ctx);
+        // تطبيع الأرقام العربية
+        var arabicNums = {'١':'1', '٢':'2', '٣':'3', '٤':'4', '٥':'5', '٦':'6', '٧':'7', '٨':'8', '٩':'9', 'واحد':'1', 'اثنين':'2', 'تنين':'2', 'ثلاثة':'3', 'تلاتة':'3', 'اربعة':'4', 'خمسة':'5', 'ستة':'6', 'سبعة':'7', 'ثمانية':'8', 'تسعة':'9'};
+        for (var k in arabicNums) { q = q.split(k).join(arabicNums[k]); }
+
+        var isTempQuery = q.indexOf('حرار') !== -1 || q.indexOf('سخون') !== -1 || q.indexOf('temp') !== -1 || q.indexOf('درجة') !== -1;
+        var isPressQuery = q.indexOf('ضغط') !== -1 || q.indexOf('بار') !== -1 || q.indexOf('press') !== -1 || q.indexOf('bar') !== -1;
+        var isVibQuery = q.indexOf('اهتزاز') !== -1 || q.indexOf('رجة') !== -1 || q.indexOf('صوت') !== -1 || q.indexOf('خبط') !== -1 || q.indexOf('vib') !== -1;
+        var isHoursQuery = q.indexOf('ساعات') !== -1 || q.indexOf('ساعة') !== -1 || q.indexOf('كام ساع') !== -1 || q.indexOf('hour') !== -1;
+        var isOilQuery = q.indexOf('زيت') !== -1 || q.indexOf('شحم') !== -1 || q.indexOf('oil') !== -1 || q.indexOf('نوع الزيت') !== -1;
+        var isFaultQuery = q.indexOf('عطل') !== -1 || q.indexOf('مشكل') !== -1 || q.indexOf('بلاغ') !== -1 || q.indexOf('واقف') !== -1 || q.indexOf('شغال') !== -1 || q.indexOf('issue') !== -1 || q.indexOf('fault') !== -1;
+
+        // البحث عن المعدات المطابقة
+        var matches = [];
+        var numMatch = q.match(/\b([1-9])\b/) || q.match(/(?:رقم|نمبر|no|#)\s*([1-9])/);
+        var targetNum = numMatch ? numMatch[1] : null;
+
+        var targetFactoryId = null;
+        if (q.indexOf('مالت') !== -1 || q.indexOf('صهر') !== -1 || q.indexOf('melt') !== -1) targetFactoryId = 'meltshop';
+        else if (q.indexOf('hrmc') !== -1 || q.indexOf('درفلة c') !== -1 || q.indexOf('درفلة سي') !== -1) targetFactoryId = 'hrmc';
+        else if (q.indexOf('hrmd') !== -1 || q.indexOf('درفلة d') !== -1 || q.indexOf('درفلة دي') !== -1) targetFactoryId = 'hrmd';
+        else if (q.indexOf('ftp') !== -1 || q.indexOf('اف تي') !== -1 || q.indexOf('غبار') !== -1 || q.indexOf('فلاتر') !== -1) targetFactoryId = 'ftp';
+        else if (q.indexOf('candb') !== -1 || q.indexOf('تقطيع') !== -1 || q.indexOf('ثني') !== -1 || q.indexOf('c&b') !== -1) targetFactoryId = 'candb';
+
+        var isCompressor = q.indexOf('كمبرسور') !== -1 || q.indexOf('كمبريسور') !== -1 || q.indexOf('ضاغط') !== -1 || q.indexOf('compressor') !== -1;
+        var isFan = q.indexOf('مروحة') !== -1 || q.indexOf('شفاط') !== -1 || q.indexOf('fan') !== -1 || q.indexOf('سحب') !== -1;
+        var isDryer = q.indexOf('مجفف') !== -1 || q.indexOf('دراير') !== -1 || q.indexOf('dryer') !== -1;
+        var isPump = q.indexOf('طلمبة') !== -1 || q.indexOf('مضخة') !== -1 || q.indexOf('pump') !== -1;
+
+        for (var i = 0; i < ctx.equipmentList.length; i++) {
+            var item = ctx.equipmentList[i];
+            var eq = item.equip;
+            var eName = eq.name.toLowerCase();
+            var fId = item.factory.id;
+
+            var match = false;
+            if (targetFactoryId) {
+                if (fId === targetFactoryId) {
+                    if (targetNum) {
+                        if (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1) match = true;
+                    } else if (isCompressor && (eq.type === 'compressor' || eName.indexOf('compressor') !== -1)) {
+                        match = true;
+                    } else if (isFan && (eq.type === 'fan' || eName.indexOf('fan') !== -1)) {
+                        match = true;
+                    } else if (isPump && (eq.type === 'pump' || eName.indexOf('pump') !== -1)) {
+                        match = true;
+                    } else if (isDryer && (eq.type === 'dryer' || eName.indexOf('dryer') !== -1)) {
+                        match = true;
+                    } else if (q.indexOf(eName) !== -1) {
+                        match = true;
+                    }
+                }
+            } else {
+                if (targetNum) {
+                    if (isCompressor && (eq.type === 'compressor' || eName.indexOf('compressor') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
+                        match = true;
+                    } else if (isFan && (eq.type === 'fan' || eName.indexOf('fan') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
+                        match = true;
+                    } else if (isDryer && (eq.type === 'dryer' || eName.indexOf('dryer') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
+                        match = true;
+                    } else if (isPump && (eq.type === 'pump' || eName.indexOf('pump') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
+                        match = true;
+                    } else if (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1) {
+                        match = true;
+                    }
+                } else if (q.indexOf(eName) !== -1) {
+                    match = true;
+                }
+            }
+            if (match) matches.push(item);
+        }
+
+        // إذا سأل عن درجة الحرارة بالذات
+        if (isTempQuery && matches.length > 0) {
+            if (matches.length === 1) {
+                var m1 = matches[0];
+                var t1 = (m1.latestData && m1.latestData.temp !== undefined && m1.latestData.temp !== '') ? (m1.latestData.temp + '°C') : 'غير مسجلة بعد';
+                var s1 = (m1.latestData && m1.latestData.status) ? ('وضع: ' + m1.latestData.status) : '';
+                var isHot = parseFloat(m1.latestData && m1.latestData.temp) >= 95;
+                var note1 = isHot ? '⚠️ (تنبيه: حرارة مرتفعة عن الحد المسموح 95°C)' : '✅ (حرارة طبيعية ومستقرة)';
+                return '🌡️ **درجة حرارة ' + m1.equip.name + ' في مصنع ' + m1.factory.name + ':**\n' +
+                       '• القراءة الحالية: **' + t1 + '** ' + (s1 ? '(' + s1 + ') ' : '') + note1 + '\n' +
+                       '• الحد الأقصى الآمن للتشغيل: 95°C (ويفصل أوتوماتيكياً عند 105°C-110°C).';
+            } else {
+                var resList = '🌡️ **درجات الحرارة المسجلة لـ (كمبرسور رقم ' + (targetNum || '') + ') في المصانع:**\n';
+                matches.forEach(function(m) {
+                    var tVal = (m.latestData && m.latestData.temp !== undefined && m.latestData.temp !== '') ? (m.latestData.temp + '°C') : 'لم تُسجل قراءة اليوم';
+                    var isH = parseFloat(m.latestData && m.latestData.temp) >= 95;
+                    resList += '• **[' + m.factory.name + '] ' + m.equip.name + ':** ' + tVal + (isH ? ' ⚠️ (مرتفعة)' : ' ✅ (طبيعية)') + '\n';
+                });
+                return resList;
+            }
+        }
+
+        // إذا سأل عن الضغط بالذات
+        if (isPressQuery && matches.length > 0) {
+            var mP = matches[0];
+            var pVal = (mP.latestData && mP.latestData.press !== undefined && mP.latestData.press !== '') ? (mP.latestData.press + ' Bar') : 'لم يُسجل فحص اليوم';
+            var pMode = (mP.latestData && mP.latestData.status) ? (' (وضع: ' + mP.latestData.status + ')') : '';
+            return '📊 **ضغط تشغيل ' + mP.equip.name + ' في ' + mP.factory.name + ':**\n' +
+                   '• القراءة: **' + pVal + '**' + pMode + ' (نطاق الضغط المعتاد: 6.5 إلى 8.5 Bar).';
+        }
+
+        // إذا سأل عن الاهتزاز أو الصوت
+        if (isVibQuery && matches.length > 0) {
+            var mV = matches[0];
+            var vVal = (mV.latestData && mV.latestData.vib !== undefined && mV.latestData.vib !== '') ? (mV.latestData.vib + ' mm/s') : 'لم يُسجل فحص';
+            var sVal = (mV.latestData && mV.latestData.sound) ? mV.latestData.sound : 'طبيعي';
+            return '🔊 **بيانات الاهتزاز والأصوات لـ ' + mV.equip.name + ' (' + mV.factory.name + '):**\n' +
+                   '• مستوى الاهتزاز: **' + vVal + '** (الحد المسموح أقل من 4.5 mm/s)\n' +
+                   '• حالة الصوت: **' + sVal + '**';
+        }
+
+        // إذا سأل عن الساعات
+        if (isHoursQuery && matches.length > 0) {
+            var mH = matches[0];
+            var remH = 4000 - (Number(mH.equip.hours || 0) % 4000);
+            return '⏱️ **ساعات تشغيل ' + mH.equip.name + ' (' + mH.factory.name + '):**\n' +
+                   '• الساعات الحالية: **' + mH.equip.hours + ' HR**\n' +
+                   '• المتبقي على صيانة دورة 4000 ساعة: **' + remH + ' ساعة**';
+        }
+
+        // إذا سأل عن الزيت
+        if (isOilQuery && matches.length > 0) {
+            var mO = matches[0];
+            var advO = (typeof getEquipmentFaultAdvice === 'function') ? getEquipmentFaultAdvice(mO.equip.id, '') : null;
+            var oilL = (mO.latestData && mO.latestData.oil) ? (mO.latestData.oil === 'normal' ? 'طبيعي' : 'منخفض') : 'غير محدد';
+            return '🛢️ **مواصفات الزيت لـ ' + mO.equip.name + ' (' + mO.factory.name + '):**\n' +
+                   '• نوع الزيت المعتمد: **' + (advO && advO.oil ? advO.oil : 'راجع الكتالوج') + '**\n' +
+                   '• مستوى الزيت في آخر فحص: **' + oilL + '**';
+        }
+
+        // إذا سأل عن الأعطال
+        if (isFaultQuery && matches.length > 0) {
+            var mF = matches[0];
+            var opF = (ctx.openAlerts || []).find(function(a) { return a.equipId === mF.equip.id; });
+            if (opF) {
+                return '🚨 **يوجد بلاغ عطل نشط على ' + mF.equip.name + ' (' + mF.factory.name + '):**\n' +
+                       '• الوصف: ' + opF.description + '\n' +
+                       '• المسؤول: ' + (opF.assignedTo || opF.user || 'قيد المتابعة');
+            } else {
+                return '✅ **' + mF.equip.name + ' في مصنع ' + mF.factory.name + ' تعمل بانتظام ولا يوجد عليها أي أعطال نشطة حالياً.**';
+            }
+        }
+
+        // إذا كان السؤال عام عن المعدة
+        if (matches.length > 0) {
+            return formatDirectEquipmentResponse(matches[0], ctx);
         }
 
         if (q.indexOf('حرار') !== -1 || q.indexOf('سخون') !== -1 || q.indexOf('temp') !== -1 || q.indexOf('overheat') !== -1) {
@@ -7680,26 +7866,41 @@ window.gmgAi = (function () {
         }
 
         var ctx = getLiveContext();
-        var systemPrompt = 'You are the Expert AI Maintenance Assistant for "Gas Maintenance Group (GMG CMMS)" in Rajhi Steel, Saudi Arabia.\n' +
-            'You assist maintenance engineers and technicians with compressors, dryers, cryogenic LOX/LIN pumps, dust suction fans, preheaters, and LPG stations across 5 factories: Meltshop, HRMC, HRMD, Cutting & Bending, and FTP.\n\n' +
-            'CURRENT REAL-TIME PLANT DATA (From Firebase):\n' +
-            '- Total Equipment: ' + ctx.equipmentCount + ' across 5 factories.\n' +
-            '- Active Open Issues (' + ctx.openAlerts.length + '): ' + JSON.stringify(ctx.openAlerts.map(function (a) { return { eq: a.equipName, plant: a.factoryName, issue: a.description, tech: a.assignedTo || a.user }; })) + '\n' +
-            '- Equipment Due for 4000h Maintenance (' + ctx.due4000.length + '): ' + JSON.stringify(ctx.due4000.map(function (d) { return { eq: d.equip.name, plant: d.factory.name, hours: d.hours, remaining: d.remaining }; })) + '\n' +
-            '- Sensor/Inspection Anomalies: ' + JSON.stringify(ctx.anomalies) + '\n' +
-            '- Low Inventory Spare Parts & Oils: ' + JSON.stringify(ctx.lowInventory.map(function (i) { return { name: i.name, qty: i.qty, min: i.minQty, unit: i.unit }; })) + '\n' +
-            '- User asking: ' + ctx.currentUser.name + ' (' + ctx.currentUser.role + ').\n\n' +
-            'GUIDELINES:\n' +
-            '- Reply in Arabic, professional, practical, encouraging, and precise maintenance engineering style.\n' +
-            '- قاعدة صارمة ومهمة جداً: عند السؤال عن معدة محددة أو كمبرسور في مصنع معين (مثل: "كمبرسور 3 في مالت شوب" أو "كمبرسور 1 مصنع HRMC"):\n' +
-            '  * أجب باختصار شديد ومباشر وعلى قد السؤال فقط في 4 أو 5 نقاط محددة وسريعة:\n' +
-            '    1. اسم المعدة والمصنع وساعات التشغيل الحالية.\n' +
-            '    2. وضع التشغيل وآخر قراءة مسجلة (حرارة، ضغط، اهتزاز).\n' +
-            '    3. المتبقي على دورة 4000 ساعة.\n' +
-            '    4. هل يوجد بلاغ عطل نشط حالياً أم لا.\n' +
-            '    5. نوع الزيت المعتمد للمعدة.\n' +
-            '  * ممنوع المقدمات الطويلة أو الإطالة الإنشائية، الإجابة تكون مركزة ومباشرة على قدر السؤال فقط.\n' +
-            '- في الأسئلة العامة أو الفحص الشامل: قدم تحليلاً هندسياً شاملاً وخطوات مرتبة.';
+        var equipSensorsSummary = ctx.equipmentList.map(function(item) {
+            var eq = item.equip;
+            var f = item.factory;
+            var ld = item.latestData || {};
+            var rParts = [];
+            if (ld.temp !== undefined && ld.temp !== '') rParts.push('الحرارة: ' + ld.temp + '°C');
+            if (ld.press !== undefined && ld.press !== '') rParts.push('الضغط: ' + ld.press + ' Bar');
+            if (ld.vib !== undefined && ld.vib !== '') rParts.push('الاهتزاز: ' + ld.vib + ' mm/s');
+            if (ld.status) rParts.push('وضع التشغيل: ' + ld.status);
+            if (ld.oil) rParts.push('مستوى الزيت: ' + (ld.oil === 'normal' ? 'طبيعي' : 'منخفض'));
+            var sStr = rParts.length ? rParts.join(' • ') : 'لم تسجل قراءة فحص حديثة';
+            var hasFault = ctx.openAlerts.find(function(a) { return a.equipId === eq.id; });
+            var fStr = hasFault ? ('🚨 عطل نشط: ' + hasFault.description) : 'لا أعطال';
+            var rem = 4000 - (Number(eq.hours || 0) % 4000);
+            return '• [' + f.name + '] ' + eq.name + ' (ID: ' + eq.id + ') -> الساعات: ' + eq.hours + ' HR | ' + sStr + ' | متبقي 4000h: ' + rem + ' ساعة | ' + fStr;
+        }).join('\n');
+
+        var systemPrompt = 'أنت المساعد الفني الذكي لمجموعة صيانة الغاز (GMG CMMS) في شركة الراجحي للحديد.\n' +
+            'تتعامل مع المهندسين والفنيين بشكل طبيعي ومريح ومرن وذكي جداً كأي شات ذكاء اصطناعي احترافي (مثل ChatGPT / Claude / Gemini).\n\n' +
+            'بيانات المعدات وقراءات الحساسات اللحظية المأخوذة الآن من قاعدة البيانات السحابية (Firebase):\n' +
+            equipSensorsSummary + '\n\n' +
+            'بيانات الأعطال النشطة:\n' +
+            JSON.stringify(ctx.openAlerts.map(function(a) { return { factory: a.factoryName, equip: a.equipName, issue: a.description, tech: a.assignedTo || a.user }; })) + '\n\n' +
+            'نواقص المخزن والزيوت:\n' +
+            JSON.stringify(ctx.lowInventory.map(function(i) { return { item: i.name, qty: i.qty, min: i.minQty, unit: i.unit }; })) + '\n\n' +
+            'قواعد التعامل والإجابة الطبيعية:\n' +
+            '1. تعامل بطبيعتك بذكاء ومرونة وبلهجة عربية مهنية وسلسة تفهم العامية والمصطلحات الدارجة والمصرية والخليجية والفصحى.\n' +
+            '2. لا تطلب أو تشترط صيغة معينة للأسئلة! افهم قصد المستخدم من أي صياغة طبيعية يكتبها.\n' +
+            '3. أجب "على قد السؤال" بالظبط وبذكاء وبدون إطالة أو حشو:\n' +
+            '   * إذا سأل عن درجة الحرارة (مثلاً: "درجة حرارة كمبرسور 5" أو "كمبرسور 3 حرارته كام"): اذكر له درجة الحرارة فوراً من البيانات أعلاه، ووضح هل هي طبيعية أم مرتفعة، وضع سياقاً مختصراً في سطرين.\n' +
+            '   * إذا وجد أكثر من كمبرسور بنفس الرقم (مثلاً كمبرسور 5 موجود في مالت شوب وHRMC وHRMD) ولم يحدد المصنع: اذكر له حرارة كل مصنع باختصار وسرعة في أسطر سريعة.\n' +
+            '   * إذا سأل عن الضغط، الساعات، الأعطال، أو الزيوت: أجب عن الخاصية التي طلبها بالظبط.\n' +
+            '   * إذا سأل بشكل عام عن حالة المعدة أو المصنع: لخص له الوضع بأسلوب محادثة مريح وسريع.\n' +
+            '   * إذا سأل سؤالاً ميكانيكياً أو استشارة فنية: قدم له الحل العملي المباشر.\n' +
+            '4. لا تجبر نفسك على قالب موحد أو تقرير طويل إلا إذا طلب المستخدم تقريراً شاملاً أو تسليم وردية.';
 
         var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
         var payload = {
