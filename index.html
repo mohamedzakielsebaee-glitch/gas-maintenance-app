@@ -2133,6 +2133,16 @@
                     }
                     return out;
                 },
+                fetchInspectionsSince: async (equipIds, sinceISO) => {
+                    const out = {}, ids = equipIds.slice(), f = F();
+                    for (let i = 0; i < ids.length; i += 8) {
+                        await Promise.all(ids.slice(i, i + 8).map(async (id) => {
+                            const s = await f.getDocs(f.query(col('eq', id, 'inspections'), f.where('date', '>=', sinceISO)));
+                            if (!s.empty) out[id] = s.docs.map(d => d.data());
+                        }));
+                    }
+                    return out;
+                },
                 fetchAllAlerts: async () => (await F().getDocs(col('alerts'))).docs.map(d => d.data()).sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))),
                 removeEquipmentData: async (equipId) => {
                     const f = F();
@@ -6020,7 +6030,7 @@
           <div class="gmg-pro-card p-4 mb-5">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               <div><div class="text-xs font-bold text-blue-600 mb-1">GMG PROFESSIONAL CMMS</div><h2 class="text-xl font-extrabold">${t('مركز التشغيل والصيانة','Maintenance Operations Center')}</h2><p class="text-xs text-slate-500 mt-1">${t('متابعة الأعطال والصيانة والأداء من شاشة واحدة','Monitor faults, maintenance and performance from one screen')}</p></div>
-              <div class="flex flex-wrap gap-2"><button class="gmg-action px-3 py-2 rounded-xl bg-amber-100 text-amber-900 text-xs font-extrabold" onclick="openQrScannerModal()"><i class="fas fa-qrcode"></i> ${t('مسح QR الشامل','Scan QR')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold shadow-sm" onclick="gmgPro.whatsappHub()"><i class="fab fa-whatsapp text-sm"></i> ${t('جروب واتساب الصيانة','WhatsApp Group')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-bold" onclick="gmgPro.openEmergency()"><i class="fas fa-triangle-exclamation"></i> ${t('بلاغ طارئ سريع','Quick Emergency')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200" onclick="gmgPro.inventory()"><i class="fas fa-boxes-stacked"></i> ${t('مخزن القطع والزيوت','Spare Parts Stock')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-indigo-50 text-indigo-800 text-xs font-bold border border-indigo-200" onclick="gmgPro.monthlyPdfReport()"><i class="fas fa-file-pdf"></i> ${t('تقرير الإدارة الشهري PDF','Monthly PDF Report')}</button></div>
+              <div class="flex flex-wrap gap-2"><button class="gmg-action px-3 py-2 rounded-xl bg-amber-100 text-amber-900 text-xs font-extrabold" onclick="openQrScannerModal()"><i class="fas fa-qrcode"></i> ${t('مسح QR الشامل','Scan QR')}</button><button class="gmg-action px-3 py-2 rounded-xl text-white text-xs font-extrabold" style="background:linear-gradient(90deg,#7c3aed,#2563eb)" onclick="gmgAI.open()"><i class="fas fa-robot"></i> ${t('المساعد الذكي','AI Assistant')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold shadow-sm" onclick="gmgPro.whatsappHub()"><i class="fab fa-whatsapp text-sm"></i> ${t('جروب واتساب الصيانة','WhatsApp Group')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-red-50 text-red-700 text-xs font-bold" onclick="gmgPro.openEmergency()"><i class="fas fa-triangle-exclamation"></i> ${t('بلاغ طارئ سريع','Quick Emergency')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200" onclick="gmgPro.inventory()"><i class="fas fa-boxes-stacked"></i> ${t('مخزن القطع والزيوت','Spare Parts Stock')}</button><button class="gmg-action px-3 py-2 rounded-xl bg-indigo-50 text-indigo-800 text-xs font-bold border border-indigo-200" onclick="gmgPro.monthlyPdfReport()"><i class="fas fa-file-pdf"></i> ${t('تقرير الإدارة الشهري PDF','Monthly PDF Report')}</button></div>
             </div>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-5">
@@ -6041,9 +6051,9 @@
           </div>
           <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
             <div class="gmg-pro-card p-4 xl:col-span-2"><div class="flex justify-between items-center mb-3"><h3 class="font-extrabold">${t('حالة الأعطال الآن (مع نصائح الزيت وقطع الغيار)','Live Fault Board & Spare Parts Advice')}</h3><button onclick="gmgPro.issues()" class="text-xs text-blue-600 font-bold">${t('عرض الكل','View all')}</button></div><div class="grid grid-cols-1 md:grid-cols-2 gap-2">${open.slice(0,6).map(a=>PRO.issueCard(a)).join('')||`<div class="text-sm text-slate-500 py-8 text-center md:col-span-2"><i class="fas fa-circle-check text-emerald-500 text-2xl mb-2"></i><br>${t('لا توجد أعطال مفتوحة','No open faults')}</div>`}</div></div>
-            <div class="gmg-pro-card p-4"><h3 class="font-extrabold mb-3">${t('إجراءات سريعة','Quick Actions')}</h3><div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-2">${PRO.action('fa-boxes-stacked',t('مخزن القطع والزيوت','Parts & Oil Stock'),'gmgPro.inventory()')}${PRO.action('fa-file-pdf',t('تقرير PDF الشهري','Monthly PDF Report'),'gmgPro.monthlyPdfReport()')}${PRO.action('fa-stopwatch',t('عداد التوقفات والأعطال','Downtime &Analytics'),'gmgPro.reports()')}${PRO.action('fa-qrcode',t('ملصقات QR','Equipment QR'),'gmgPro.qrList()')}${PRO.action('fa-clock',t('ساعات التشغيل','Operating Hours'),'gmgPro.hours()')}${PRO.action('fa-calendar-days',t('جدول الصيانة','PM Calendar'),'gmgPro.calendar()')}<button onclick="gmgPro.whatsappHub()" class="gmg-action p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-center text-emerald-800"><i class="fab fa-whatsapp text-emerald-600 text-lg"></i><div class="text-[10px] font-extrabold mt-1">${t('جروب الواتساب','WhatsApp Group')}</div></button>${PRO.action('fa-moon',t('الوضع الليلي','Dark Mode'),'gmgPro.dark()')}</div></div>
+            ${window.gmgAI ? window.gmgAI.cardHtml() : ''}
           </div>
-          <div class="gmg-pro-card p-4 mb-5"><div class="flex justify-between items-center mb-3"><h3 class="font-extrabold">${t('آخر النشاطات','Recent Activity')}</h3><button onclick="gmgPro.reports()" class="text-xs text-blue-600 font-bold">${t('تحليل','Analyze')}</button></div><div class="space-y-2">${recent.map(a=>{const adv=typeof getEquipmentFaultAdvice==='function'?getEquipmentFaultAdvice(a.equipId,a.description):null;return `<div onclick="gmgPro.issue('${esc(a.id)}')" class="flex flex-col gap-1.5 p-2.5 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer"><div class="flex items-center gap-3"><span class="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0"><i class="fas fa-triangle-exclamation"></i></span><div class="flex-1 min-w-0"><div class="font-bold text-xs truncate">${esc(a.equipName||'')} <span class="text-[10px] text-slate-400">(${esc(a.factoryName||'')})</span></div><div class="text-[10px] text-slate-600 truncate">${esc(a.description||'')}</div></div><span class="text-[10px] text-slate-400" dir="ltr">${a.date?_fmt(a.date):''}</span></div>${adv?`<div class="text-[10px] bg-amber-50 text-amber-900 px-2.5 py-1 rounded-lg border border-amber-200"><i class="fas fa-lightbulb text-amber-600 ml-1"></i> <b>نصيحة الصيانة:</b> الزيت: ${esc(adv.oil)} | القطع: ${esc(adv.parts)}</div>`:''}</div>`;}).join('')||`<div class="text-sm text-slate-500">${t('لا توجد بيانات بعد','No data yet')}</div>`}</div></div>`;
+          `;
       };
       PRO.kpi=(icon,label,n,tc,bg,fn)=>`<button onclick="${fn}" class="gmg-pro-card gmg-kpi p-3 text-right hover:shadow-md"><div class="flex items-center justify-between"><span class="w-9 h-9 rounded-xl ${bg} ${tc} flex items-center justify-center">${icon}</span><span class="num ${tc}">${n}</span></div><div class="text-[10px] text-slate-500 font-bold mt-3">${label}</div></button>`;
       PRO.action=(ic,label,fn)=>`<button onclick="${fn}" class="gmg-action p-3 rounded-xl bg-slate-50 hover:bg-blue-50 text-center"><i class="fas ${ic} text-primary text-lg"></i><div class="text-[10px] font-bold mt-1">${label}</div></button>`;
@@ -6803,7 +6813,7 @@
       const names=[...new Set(items.map(x=>x.record.userName).filter(Boolean))];
       const dateLabel=selectedDate==='all'?'All Dates':selectedDate;
       pages += `<section class="gdc-print-page">
-        <header class="gdc-print-head"><img class="gdc-print-logo" src="${LOGO}" alt="Rajhi Steel Company Logo"><div style="text-align:right;direction:ltr;flex:1"><b style="font:800 20px Arial;color:#2865a5;letter-spacing:1px">RAJHI STEEL</b><div style="font:10px Arial;color:#64748b;margin-top:3px">UTILITY MAINTENANCE DEPARTMENT</div></div></header>
+        <header class="gdc-print-head"><div style="text-align:left;direction:ltr;flex:1"><b style="font:800 20px Arial;color:#2865a5;letter-spacing:1px">RAJHI STEEL</b><div style="font:10px Arial;color:#64748b;margin-top:3px">UTILITY MAINTENANCE DEPARTMENT</div></div><img class="gdc-print-logo" src="${LOGO}" alt="Rajhi Steel Company Logo"></header>
         <div class="gdc-print-title">UTILITY MAINTENANCE DAILY CHECK SHEET</div>
         <div class="gdc-print-sub">${esc(f.name)} — DAILY INSPECTION REPORT</div>
         <div class="gdc-print-meta"><span><b>Factory:</b> ${esc(f.name)}</span><span><b>Date:</b> ${esc(dateLabel)}</span><span><b>Total inspected:</b> ${items.length}</span></div>
@@ -6862,6 +6872,335 @@
   if(oldShow){window.showDashboard=function(){oldShow.apply(this,arguments);setTimeout(addDashboardEntry,80);};}
   document.addEventListener('DOMContentLoaded',()=>setTimeout(addDashboardEntry,900));
   window.addEventListener('load',()=>setTimeout(addDashboardEntry,1200));
+})();
+</script>
+
+<script>
+/* ===== GMG AI Maintenance Assistant (محرك محلي + ذكاء Gemini اختياري عبر Apps Script) ===== */
+(function () {
+  'use strict';
+  if (window.gmgAI) return;
+  const $ = (id) => document.getElementById(id);
+  const isAr = () => { try { return currentLang !== 'en'; } catch (e) { return true; } };
+  const L = (ar, en) => (isAr() ? ar : en);
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  const S = { open: false, busy: false, history: [], lastCloud: 0, blockedUntil: 0, blockedReason: '', inspCache: null, inspAt: 0 };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const short = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+  const toLatin = (s) => String(s || '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  const norm = (s) => toLatin(s).toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+  const pad = (n) => String(n).padStart(2, '0');
+  const dt = (iso) => { const d = new Date(iso); if (isNaN(d)) return '-'; return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const ageTxt = (iso) => {
+    const ms = Date.now() - new Date(iso).getTime(); if (isNaN(ms) || ms < 0) return '-';
+    const h = Math.floor(ms / 3600000); if (h < 1) return L('أقل من ساعة', '<1h');
+    if (h < 48) return h + L(h <= 10 ? ' ساعات' : ' ساعة', 'h'); return Math.floor(h / 24) + L(' يوم', 'd');
+  };
+
+  /* ---------- الوصول لبيانات التطبيق ---------- */
+  const equipAll = () => { const r = []; ((typeof appState !== 'undefined' && appState.factories) || []).forEach((f) => (f.departments || []).forEach((d) => (d.equipment || []).forEach((e) => r.push({ f, d, e })))); return r; };
+  const alertsAll = () => (typeof appState !== 'undefined' && Array.isArray(appState.alerts) ? appState.alerts : []);
+  const openAlerts = () => alertsAll().filter((a) => a.status === 'open');
+  const remHours = (e) => {
+    try { if (typeof calculateMaintenanceStatus === 'function') { const m = calculateMaintenanceStatus(e.hours); if (m && typeof m.remaining === 'number') return m.remaining; } } catch (x) {}
+    const h = Number(e.hours || 0); return 4000 - (h % 4000);
+  };
+  const pending = (e) => { try { return typeof getPendingTasks === 'function' ? getPendingTasks(e.id) || [] : []; } catch (x) { return []; } };
+  const nameOf = (id) => { const x = equipAll().find((y) => y.e.id === id); return x ? x.e.name : id; };
+  const statusLbl = (s) => ({ running: L('يعمل', 'Running'), standby: L('استعداد', 'Standby'), off: L('متوقف', 'Off'), loading: L('تحميل', 'Loading'), unloading: L('تفريغ', 'Unloading') }[s] || s || '-');
+  const todayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+  async function getInspections(days) {
+    const now = Date.now();
+    if (S.inspCache && S.inspCache.days >= days && now - S.inspAt < 300000) return S.inspCache.rows;
+    const since = todayStart(); since.setDate(since.getDate() - (days - 1));
+    let map = null;
+    try { map = await GMG.fetchInspectionsSince(equipAll().map((x) => x.e.id), since.toISOString()); } catch (e) { console.warn('AI inspections fetch', e); return null; }
+    const rows = [];
+    Object.keys(map || {}).forEach((id) => (map[id] || []).forEach((r) => rows.push({ id, r })));
+    rows.sort((a, b) => String(b.r.date).localeCompare(String(a.r.date)));
+    S.inspCache = { days, rows }; S.inspAt = now; return rows;
+  }
+  function warnings(d) {
+    d = d || {}; const w = []; const n = (v) => (v === '' || v == null ? NaN : parseFloat(v));
+    const temp = n(d.temp), vib = n(d.vib), press = n(d.press);
+    if (!isNaN(temp) && temp >= 95) w.push(L('حرارة مرتفعة ', 'High temp ') + temp + '°C');
+    if (!isNaN(vib) && vib >= 4.5) w.push(L('اهتزاز مرتفع ', 'High vibration ') + vib + ' mm/s');
+    if (!isNaN(press) && (press > 12 || (press > 0 && press < 4))) w.push(L('ضغط خارج النطاق ', 'Pressure out of range ') + press + ' bar');
+    if (d.oil === 'low') w.push(L('زيت منخفض', 'Low oil'));
+    if (d.belts === 'bad' || d.belts === 'loose') w.push(L('سيور ', 'Belts ') + (d.belts === 'bad' ? L('تالفة', 'bad') : L('مرتخية', 'loose')));
+    if (d.sound && d.sound !== 'normal') w.push(L('أصوات غير طبيعية', 'Abnormal sound'));
+    return w;
+  }
+  const bullets = (arr, max) => arr.slice(0, max).join('\n') + (arr.length > max ? '\n' + L('… و', '… and ') + (arr.length - max) + L(' أخرى', ' more') : '');
+
+  /* ---------- إجابات محلية (بدون إنترنت وبدون حصة مجانية) ---------- */
+  function ansOpenFaults() {
+    const o = openAlerts().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    if (!o.length) return L('✅ لا توجد أعطال مفتوحة حالياً.', '✅ No open faults right now.');
+    const lines = o.map((a) => '• **' + (a.equipName || '-') + '** (' + (a.factoryName || '-') + ') — ' + short(a.description, 90) + '\n   ' + L('منذ ', 'since ') + ageTxt(a.date) + (a.assignedTo ? ' — ' + L('مُسند إلى ', 'assigned to ') + a.assignedTo : ''));
+    return '🚨 ' + L('الأعطال المفتوحة: ', 'Open faults: ') + o.length + '\n' + bullets(lines, 12);
+  }
+  function ansDue() {
+    const eq = equipAll(); const hrs = [], soon = [], tasks = [];
+    eq.forEach((x) => {
+      const r = remHours(x.e);
+      if (r <= 200) hrs.push('• **' + x.e.name + '** (' + x.f.name + ') — ' + (r <= 0 ? L('تجاوزت ', 'overdue by ') + Math.abs(Math.round(r)) : L('متبقي ', 'remaining ') + Math.round(r)) + ' h (' + Number(x.e.hours || 0) + ' h)');
+      else if (r <= 600) soon.push('• ' + x.e.name + ' (' + x.f.name + ') — ' + L('متبقي ', 'remaining ') + Math.round(r) + ' h');
+      const p = pending(x.e); if (p.length) tasks.push('• **' + x.e.name + '** (' + x.f.name + '): ' + p.slice(0, 4).join('، ') + (p.length > 4 ? ' …' : ''));
+    });
+    let out = '';
+    out += '🛠️ ' + L('صيانة 4000 ساعة مستحقة (≤200 ساعة): ', '4000h PM due (≤200h): ') + hrs.length + '\n' + (hrs.length ? bullets(hrs, 10) : L('لا يوجد', 'None')) + '\n\n';
+    out += '⏳ ' + L('قريبة (≤600 ساعة): ', 'Coming soon (≤600h): ') + soon.length + '\n' + (soon.length ? bullets(soon, 8) : L('لا يوجد', 'None')) + '\n\n';
+    out += '📋 ' + L('بنود صيانة معلّقة: ', 'Pending PM tasks: ') + tasks.length + '\n' + (tasks.length ? bullets(tasks, 8) : L('لا يوجد', 'None'));
+    return out;
+  }
+  async function ansInspToday() {
+    const rows = await getInspections(1);
+    if (rows === null) return L('تعذر قراءة الفحوصات من السحابة الآن (تأكد من الاتصال).', 'Could not read inspections from the cloud (check connection).');
+    const done = new Set(rows.map((x) => x.id)); const techs = [...new Set(rows.map((x) => x.r.userName).filter(Boolean))];
+    const byF = {}; equipAll().forEach((x) => { const k = x.f.name; (byF[k] = byF[k] || { t: 0, d: 0, miss: [] }); byF[k].t++; if (done.has(x.e.id)) byF[k].d++; else byF[k].miss.push(x.e.name); });
+    let out = '📋 ' + L('فحوصات اليوم: ', "Today's inspections: ") + done.size + '/' + equipAll().length + '\n';
+    Object.keys(byF).forEach((k) => { out += '• **' + k + '**: ' + byF[k].d + '/' + byF[k].t + '\n'; });
+    const miss = []; Object.keys(byF).forEach((k) => byF[k].miss.forEach((n) => miss.push(n + ' (' + k + ')')));
+    out += '\n' + (miss.length ? '⚠️ ' + L('لم يتم فحصها اليوم:', 'Not inspected today:') + '\n' + bullets(miss.map((m) => '• ' + m), 20) : '✅ ' + L('تم فحص جميع المعدات اليوم.', 'All equipment inspected today.'));
+    if (techs.length) out += '\n\n👷 ' + L('الفنيون: ', 'Technicians: ') + techs.join('، ');
+    return out;
+  }
+  async function ansAbnormal() {
+    const rows = await getInspections(3);
+    if (rows === null) return L('تعذر قراءة الفحوصات من السحابة الآن.', 'Could not read inspections now.');
+    const seen = {}, lines = [];
+    rows.forEach(({ id, r }) => { if (seen[id]) return; seen[id] = 1; const w = warnings(r.data); if (w.length) lines.push('• **' + nameOf(id) + '** — ' + w.join('، ') + '\n   ' + dt(r.date) + (r.userName ? ' — ' + r.userName : '')); });
+    if (!lines.length) return '✅ ' + L('لا توجد قراءات غير طبيعية في آخر 3 أيام (حسب حدود التطبيق).', 'No abnormal readings in the last 3 days (per the app thresholds).');
+    return '⚠️ ' + L('قراءات غير طبيعية (آخر فحص لكل معدة خلال 3 أيام): ', 'Abnormal readings (latest inspection per equipment, 3 days): ') + lines.length + '\n' + bullets(lines, 12) + '\n\n' + L('الحدود: حرارة ≥95، اهتزاز ≥4.5، ضغط خارج 4–12 بار.', 'Thresholds: temp ≥95, vibration ≥4.5, pressure outside 4–12 bar.');
+  }
+  function ansTopFailing() {
+    const cut = Date.now() - 90 * 86400000, cnt = {};
+    alertsAll().forEach((a) => { if (new Date(a.date).getTime() >= cut) { const k = a.equipId || a.equipName; (cnt[k] = cnt[k] || { n: 0, name: a.equipName, fac: a.factoryName, last: a.date }); cnt[k].n++; if (String(a.date) > String(cnt[k].last)) cnt[k].last = a.date; } });
+    const top = Object.values(cnt).sort((a, b) => b.n - a.n).slice(0, 6);
+    if (!top.length) return L('لا توجد أعطال مسجلة خلال آخر 90 يوماً.', 'No faults recorded in the last 90 days.');
+    return '📊 ' + L('أكثر المعدات أعطالاً (آخر 90 يوماً):', 'Most faulty equipment (last 90 days):') + '\n' + top.map((t) => '• **' + t.name + '** (' + t.fac + ') — ' + t.n + L(' عطل، آخرها ', ' faults, last ') + dt(t.last)).join('\n');
+  }
+  async function ansSummary() {
+    const eq = equipAll(), open = openAlerts(); let due = 0, soon = 0;
+    eq.forEach((x) => { const r = remHours(x.e); if (r <= 200) due++; else if (r <= 600) soon++; });
+    const pend = eq.filter((x) => pending(x.e).length).length;
+    const rows = await getInspections(1); const done = rows ? new Set(rows.map((x) => x.id)).size : null;
+    let abn = 0; if (rows) { const seen = {}; rows.forEach(({ id, r }) => { if (!seen[id]) { seen[id] = 1; if (warnings(r.data).length) abn++; } }); }
+    return '📌 ' + L('ملخص الحالة الآن', 'Status summary') + '\n' +
+      '• 🚨 ' + L('أعطال مفتوحة: ', 'Open faults: ') + open.length + '\n' +
+      '• 🛠️ ' + L('صيانة 4000 ساعة مستحقة: ', '4000h PM due: ') + due + ' — ⏳ ' + L('قريبة: ', 'soon: ') + soon + '\n' +
+      '• 📋 ' + L('معدات لها بنود صيانة معلّقة: ', 'Equipment with pending PM tasks: ') + pend + '\n' +
+      '• ✅ ' + L('فحوصات اليوم: ', "Today's inspections: ") + (done === null ? '—' : done + '/' + eq.length) + '\n' +
+      '• ⚠️ ' + L('معدات بقراءات غير طبيعية اليوم: ', 'Equipment with abnormal readings today: ') + (rows ? abn : '—') + '\n' +
+      '• 🏭 ' + L('إجمالي المعدات: ', 'Total equipment: ') + eq.length;
+  }
+  async function ansEquipment(x) {
+    const e = x.e; const mine = alertsAll().filter((a) => a.equipId === e.id);
+    const open = mine.filter((a) => a.status === 'open'); const hist = mine.filter((a) => a.status !== 'open').sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 3);
+    const rem = remHours(e), pend = pending(e);
+    let out = '🏭 **' + e.name + '** — ' + x.f.name + ' / ' + x.d.name + '\n';
+    out += '⏱ ' + L('ساعات التشغيل: ', 'Running hours: ') + Number(e.hours || 0) + ' h — ' + (rem <= 0 ? L('صيانة 4000 ساعة مستحقة الآن', '4000h PM overdue') : L('المتبقي لصيانة 4000: ', 'Left to 4000h PM: ') + Math.round(rem) + ' h') + '\n';
+    out += '🚨 ' + (open.length ? L('أعطال مفتوحة: ', 'Open faults: ') + open.length + '\n' + open.slice(0, 4).map((a) => '   • ' + short(a.description, 90) + ' (' + ageTxt(a.date) + ')').join('\n') : L('لا توجد أعطال مفتوحة', 'No open faults')) + '\n';
+    if (hist.length) out += '🗂 ' + L('آخر أعطال تم إغلاقها:', 'Recent closed faults:') + '\n' + hist.map((a) => '   • ' + dt(a.date).slice(0, 10) + ' — ' + short(a.description, 80)).join('\n') + '\n';
+    out += '📋 ' + (pend.length ? L('بنود صيانة معلّقة: ', 'Pending PM tasks: ') + pend.slice(0, 5).join('، ') : L('لا توجد بنود صيانة معلّقة', 'No pending PM tasks')) + '\n';
+    const rows = await getInspections(7);
+    if (rows === null) out += '🔎 ' + L('تعذر قراءة آخر فحص الآن.', 'Could not read the latest inspection.');
+    else {
+      const m = rows.filter((z) => z.id === e.id);
+      if (!m.length) out += '🔎 ' + L('لا يوجد فحص يومي خلال آخر 7 أيام.', 'No daily inspection in the last 7 days.');
+      else {
+        const r = m[0].r, d = r.data || {}, w = warnings(d);
+        out += '🔎 ' + L('آخر فحص: ', 'Last inspection: ') + dt(r.date) + (r.userName ? ' — ' + r.userName : '') + '\n   ' + L('الحالة: ', 'Status: ') + statusLbl(d.status) +
+          (d.temp !== '' && d.temp != null ? ' | T ' + d.temp + '°C' : '') + (d.vib !== '' && d.vib != null ? ' | V ' + d.vib : '') + (d.press !== '' && d.press != null ? ' | P ' + d.press : '') +
+          (w.length ? '\n   ⚠️ ' + w.join('، ') : '\n   ✅ ' + L('القراءات ضمن الحدود', 'Readings within limits'));
+      }
+    }
+    try { const adv = window.getEquipmentFaultAdvice && window.getEquipmentFaultAdvice(e.id, ''); if (adv && adv.oil) out += '\n\n💡 ' + L('الزيت المناسب: ', 'Suggested oil: ') + short(adv.oil, 140) + '\n' + L('قطع غيار شائعة: ', 'Common spare parts: ') + short(adv.parts, 160); } catch (er) {}
+    return out;
+  }
+  function ansHelp() {
+    return L('أنا مساعد الصيانة الذكي 🤖 أقرأ بيانات التطبيق الحية (المعدات والفحوصات والأعطال) وأجيب عنها.\n\nجرّب أن تسأل:\n• ما هي الأعطال المفتوحة؟\n• ما المعدات المستحقة للصيانة؟\n• ما الفحوصات التي لم تتم اليوم؟\n• هل توجد قراءات غير طبيعية؟\n• أكثر المعدات أعطالاً\n• اكتب اسم معدة لعرض حالتها (مثل: Compressor 1)\n• ملخص اليوم\n\nوللأسئلة التحليلية (لماذا؟ اقترح، قارن) أستخدم الذكاء السحابي إذا كان مفعّلاً.',
+      "I'm your AI maintenance assistant 🤖 I read the app's live data (equipment, inspections, faults).\n\nTry:\n• What are the open faults?\n• Which equipment is due for maintenance?\n• Which inspections are missing today?\n• Any abnormal readings?\n• Most faulty equipment\n• Type an equipment name (e.g. Compressor 1)\n• Today's summary\n\nFor analytical questions (why? suggest, compare) I use the cloud AI when enabled.");
+  }
+
+  /* ---------- مطابقة اسم المعدة ---------- */
+  const STOP = new Set(('اعطال عطل معده المعده معدات حاله حالة ساعات تشغيل فحص فحوصات اخر اخير ماهي ما هي هل في عن علي على من الي الى لل ال equipment status of the for faults fault hours last inspection show about what is how many report').split(' '));
+  function findEquip(nq) {
+    const toks = nq.split(' ').filter((t) => t && !STOP.has(t) && (t.length >= 3 || /^\d+$/.test(t)));
+    if (!toks.length || !toks.some((t) => t.length >= 3)) return [];
+    const scored = equipAll().map((x) => {
+      const nt = norm(x.e.name).split(' '); const ft = norm(x.f.name + ' ' + x.d.name).split(' ');
+      let sc = 0, hit = 0;
+      toks.forEach((t) => { if (nt.includes(t)) { sc += 2; hit++; } else if (t.length >= 4 && nt.some((n) => n.length >= 4 && (n.includes(t) || t.includes(n)))) { sc += 1.5; hit++; } else if (ft.includes(t)) { sc += 0.5; } });
+      return { x, sc, hit };
+    }).filter((z) => z.hit > 0);
+    if (!scored.length) return [];
+    const best = Math.max.apply(null, scored.map((z) => z.sc));
+    return scored.filter((z) => z.sc === best).map((z) => z.x);
+  }
+
+  /* ---------- الذكاء السحابي (Gemini عبر Apps Script) ---------- */
+  async function buildContext() {
+    const eq = equipAll();
+    const eqLines = eq.map((x) => [x.f.name, x.d.name, x.e.name, x.e.type || '', 'h=' + Number(x.e.hours || 0), 'rem4000=' + Math.round(remHours(x.e))].join(' | '));
+    const open = openAlerts().slice(0, 40).map((a) => ({ equip: a.equipName, factory: a.factoryName, desc: short(a.description, 200), since: a.date, status: a.workflowStatus || 'open', assignedTo: a.assignedTo || '' }));
+    const cut = Date.now() - 60 * 86400000;
+    const recent = alertsAll().filter((a) => a.status !== 'open' && new Date(a.date).getTime() >= cut).slice(0, 60).map((a) => ({ equip: a.equipName, factory: a.factoryName, desc: short(a.description, 140), date: a.date, resolved: a.resolvedDate || '', repair: short(a.repairNotes, 120) }));
+    const pend = []; eq.forEach((x) => { const p = pending(x.e); if (p.length) pend.push({ equip: x.e.name, factory: x.f.name, tasks: p.slice(0, 6) }); });
+    const rows = await getInspections(7); const latest = {}, abn = [];
+    (rows || []).forEach(({ id, r }) => { if (!latest[id]) latest[id] = r; const w = warnings(r.data); if (w.length && abn.length < 40) abn.push({ equip: nameOf(id), date: r.date, tech: r.userName, issues: w }); });
+    const lastInsp = Object.keys(latest).map((id) => { const r = latest[id], d = r.data || {}; return { equip: nameOf(id), date: r.date, tech: r.userName, status: d.status, temp: d.temp, vib: d.vib, press: d.press, hum: d.hum, oil: d.oil, belts: d.belts, sound: d.sound, notes: short(r.notes, 100) }; });
+    const t0 = todayStart().getTime(); const doneToday = new Set((rows || []).filter((z) => new Date(z.r.date).getTime() >= t0).map((z) => z.id));
+    const ctx = { now: new Date().toISOString(), timezone: 'Asia/Riyadh', thresholds: { tempC: 95, vibMmS: 4.5, pressureBarOk: '4-12', pmCycleHours: 4000 }, equipmentLines: eqLines, openFaults: open, resolvedFaultsLast60d: recent, pendingPmTasks: pend,
+      inspectionsLast7d: { available: !!rows, latestPerEquipment: lastInsp, abnormal: abn, inspectedTodayCount: doneToday.size, notInspectedToday: eq.filter((x) => !doneToday.has(x.e.id)).map((x) => x.e.name + ' (' + x.f.name + ')') } };
+    let s = JSON.stringify(ctx);
+    if (s.length > 90000) { ctx.resolvedFaultsLast60d = ctx.resolvedFaultsLast60d.slice(0, 20); ctx.inspectionsLast7d.latestPerEquipment = ctx.inspectionsLast7d.latestPerEquipment.slice(0, 40); s = JSON.stringify(ctx); }
+    return s;
+  }
+  async function askCloud(q) {
+    if (typeof GMG_WEBHOOK_URL === 'undefined') return { ok: false, error: 'NO_URL' };
+    if (Date.now() < S.blockedUntil) return { ok: false, error: S.blockedReason || 'BLOCKED' };
+    const wait = 2500 - (Date.now() - S.lastCloud); if (wait > 0) await sleep(wait);
+    S.lastCloud = Date.now();
+    let ctx = '{}'; try { ctx = await buildContext(); } catch (e) { console.warn('ctx', e); }
+    const body = { ai_chat: true, question: q, context: ctx, history: S.history.slice(-6), lang: isAr() ? 'ar' : 'en' };
+    let j;
+    try {
+      const res = await fetch(GMG_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+      j = await res.json();
+    } catch (e) { S.blockedUntil = Date.now() + 120000; S.blockedReason = 'NETWORK'; return { ok: false, error: 'NETWORK' }; }
+    if (!j || typeof j !== 'object') return { ok: false, error: 'BAD_RESPONSE' };
+    if (!j.ok && (j.error === 'NO_KEY' || j.error === 'KEY' || j.error === 'OLD_SCRIPT')) { S.blockedUntil = Date.now() + 300000; S.blockedReason = j.error; }
+    return j;
+  }
+  function cloudErrorText(code) {
+    const m = {
+      NO_KEY: L('الذكاء السحابي غير مفعّل بعد (لم يُضَف مفتاح Gemini في Apps Script).', 'Cloud AI is not enabled yet (no Gemini key in Apps Script).'),
+      KEY: L('مفتاح Gemini غير صالح أو غير مسموح به. راجع المفتاح في Apps Script.', 'Gemini key is invalid or not allowed. Check the key in Apps Script.'),
+      OLD_SCRIPT: L('نسخة Apps Script المنشورة قديمة وليس فيها المساعد. انشر إصداراً جديداً.', 'The deployed Apps Script is outdated. Publish a new version.'),
+      NETWORK: L('تعذر الاتصال بالخادم السحابي (تحقق من الإنترنت أو من نشر Apps Script).', 'Could not reach the cloud server (check internet or Apps Script deployment).'),
+      DAILY_CAP: L('تم الوصول للحد اليومي للأسئلة السحابية. أجيب من بيانات التطبيق مباشرة.', 'Daily cloud question limit reached. Answering from app data.'),
+      RATE: L('الأسئلة السحابية كثيرة الآن، انتظر دقيقة ثم أعد المحاولة.', 'Too many cloud questions right now. Wait a minute and retry.'),
+      QUOTA: L('انتهت الحصة المجانية لـ Gemini مؤقتاً. أعد المحاولة لاحقاً.', 'The free Gemini quota is temporarily used up. Try again later.'),
+      EMPTY: L('لم يصل رد مفهوم من الذكاء السحابي.', 'No usable reply from the cloud AI.')
+    };
+    return m[code] || L('تعذر الحصول على رد سحابي الآن.', 'Could not get a cloud reply now.');
+  }
+
+  /* ---------- التوجيه ---------- */
+  async function route(q) {
+    const nq = norm(q);
+    const has = (re) => re.test(nq);
+    if (has(/^(مساعده|ساعدني|help|ماذا تستطيع|ايش تقدر|what can you)/)) return { text: ansHelp(), src: 'local' };
+    const wantsCloud = has(/(لماذا|ليه|سبب|تحليل|حلل|اقترح|نصيحه|انصح|توصي|كيف|قارن|مقارنه|توقع|why|cause|analy|suggest|recommend|how |compare|predict|explain)/);
+    if (!wantsCloud) {
+      if (has(/(ملخص|نظره عامه|تقرير سريع|summary|overview|status report)/)) return { text: await ansSummary(), src: 'local' };
+      if (has(/(اكثر|top|most)/) && has(/(اعطال|عطل|faults|failures|breakdown|تعطلا)/)) return { text: ansTopFailing(), src: 'local' };
+      const eqm = findEquip(nq);
+      if (eqm.length === 1) return { text: await ansEquipment(eqm[0]), src: 'local' };
+      if (has(/(صيانه|maintenance|\bpm\b)/) && has(/(مستحق|متاخر|قريب|تحتاج|due|overdue|soon|upcoming|4000)/)) return { text: ansDue(), src: 'local' };
+      if (has(/(فحص|فحوصات|inspection)/) && has(/(اليوم|today|لم يتم|ما تم|متبقي|not done|remaining|missing)/)) return { text: await ansInspToday(), src: 'local' };
+      if (has(/(قراءات|قراءه|abnormal|غير طبيعي|حراره مرتفعه|اهتزاز مرتفع|high temp|high vibration)/)) return { text: await ansAbnormal(), src: 'local' };
+      if (has(/(اعطال|عطل|بلاغات|faults?|issues?|breakdowns?)/) && has(/(مفتوح|نشط|حاليا|الان|open|active|current|now|pending)/) || has(/^(الاعطال|اعطال|faults)$/)) return { text: ansOpenFaults(), src: 'local' };
+      if (eqm.length > 1 && eqm.length <= 6) return { text: L('وجدت أكثر من معدة بهذا الاسم، حدّد واحدة:\n', 'Several matches, please pick one:\n') + eqm.map((x) => '• ' + x.e.name + ' (' + x.f.name + ')').join('\n'), src: 'local' };
+    }
+    const r = await askCloud(q);
+    if (r && r.ok && r.answer) return { text: r.answer, src: 'cloud', model: r.model };
+    const eqm2 = findEquip(nq); let fb = '';
+    try { fb = eqm2.length === 1 ? await ansEquipment(eqm2[0]) : await ansSummary(); } catch (e) {}
+    return { text: '⚠️ ' + cloudErrorText(r && r.error) + (fb ? '\n\n' + L('هذا ما أعرفه من بيانات التطبيق:', 'Here is what the app data shows:') + '\n' + fb : '\n\n' + ansHelp()), src: 'fallback' };
+  }
+
+  /* ---------- الواجهة ---------- */
+  const fmt = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  function ensureUI() {
+    if ($('gmgAiOverlay')) return;
+    const st = document.createElement('style'); st.id = 'gmgAiStyle';
+    st.textContent = '#gmgAiOverlay{position:fixed;inset:0;z-index:10050;display:none;flex-direction:column;background:#f1f5f9;font-family:inherit}#gmgAiOverlay.on{display:flex}' +
+      '#gmgAiOverlay .ai-msg{max-width:92%;padding:10px 12px;border-radius:16px;font-size:13px;line-height:1.75;white-space:pre-wrap;word-break:break-word}' +
+      '#gmgAiOverlay .ai-user{background:#2563eb;color:#fff;border-bottom-' + 'left-radius:4px}#gmgAiOverlay .ai-bot{background:#fff;border:1px solid #e2e8f0;color:#0f172a}' +
+      '#gmgAiOverlay .ai-tag{font-size:9px;color:#94a3b8;margin-top:4px;white-space:normal}#gmgAiOverlay .ai-chip{white-space:nowrap;font-size:11px;font-weight:700;padding:6px 10px;border-radius:999px;background:#ede9fe;color:#5b21b6;border:1px solid #ddd6fe}' +
+      '#gmgAiOverlay .ai-tool{white-space:nowrap;font-size:10px;font-weight:700;padding:4px 9px;border-radius:8px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}' +
+      'body.gmg-dark #gmgAiOverlay{background:#0b1220}body.gmg-dark #gmgAiOverlay .ai-bot{background:#111c33;border-color:#243352;color:#e5e7eb}body.gmg-dark #gmgAiOverlay .ai-foot{background:#0f172a;border-color:#243352}body.gmg-dark #gmgAiOverlay input{background:#111c33;color:#e5e7eb;border-color:#243352}' +
+      '@keyframes aiDot{0%,80%,100%{opacity:.2}40%{opacity:1}}.ai-dots span{animation:aiDot 1.2s infinite;display:inline-block;margin:0 1px}.ai-dots span:nth-child(2){animation-delay:.2s}.ai-dots span:nth-child(3){animation-delay:.4s}';
+    document.head.appendChild(st);
+    const o = document.createElement('div'); o.id = 'gmgAiOverlay'; o.dir = isAr() ? 'rtl' : 'ltr';
+    o.innerHTML =
+      '<div class="flex items-center gap-3 px-3 py-2.5 text-white" style="background:linear-gradient(90deg,#4c1d95,#1d4ed8)">' +
+        '<span class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-lg"><i class="fas fa-robot"></i></span>' +
+        '<div class="flex-1 min-w-0"><div class="font-extrabold text-sm">AI Maintenance Assistant</div><div class="text-[10px] opacity-80" id="gmgAiSub"></div></div>' +
+        '<button type="button" id="gmgAiClear" class="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20" title="مسح"><i class="fas fa-broom"></i></button>' +
+        '<button type="button" id="gmgAiClose" class="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20"><i class="fas fa-xmark"></i></button>' +
+      '</div>' +
+      '<div id="gmgAiMsgs" class="flex-1 overflow-y-auto p-3 space-y-3"></div>' +
+      '<div class="ai-foot border-t bg-white px-3 pt-2 pb-3" style="padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))">' +
+        '<div id="gmgAiChips" class="flex gap-1.5 overflow-x-auto pb-2"></div>' +
+        '<div id="gmgAiTools" class="flex gap-1.5 overflow-x-auto pb-2"></div>' +
+        '<div class="flex items-center gap-2"><input id="gmgAiInput" type="text" autocomplete="off" class="flex-1 border border-slate-300 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-violet-500" />' +
+        '<button type="button" id="gmgAiSend" class="w-11 h-11 rounded-xl text-white flex items-center justify-center" style="background:#6d28d9"><i class="fas fa-paper-plane"></i></button></div>' +
+      '</div>';
+    document.body.appendChild(o);
+    $('gmgAiClose').onclick = () => api.close();
+    $('gmgAiClear').onclick = () => { S.history = []; $('gmgAiMsgs').innerHTML = ''; welcome(); };
+    $('gmgAiSend').onclick = () => { const v = $('gmgAiInput').value; $('gmgAiInput').value = ''; api.ask(v); };
+    $('gmgAiInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('gmgAiSend').click(); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.open) api.close(); });
+  }
+  const CHIPS = () => [L('ملخص اليوم', "Today's summary"), L('ما هي الأعطال المفتوحة؟', 'What are the open faults?'), L('المعدات المستحقة للصيانة', 'Equipment due for maintenance'), L('الفحوصات التي لم تتم اليوم', 'Inspections missing today'), L('قراءات غير طبيعية', 'Abnormal readings'), L('أكثر المعدات أعطالاً', 'Most faulty equipment')];
+  const TOOLS = () => [['fa-clock', L('ساعات التشغيل', 'Operating hours'), 'hours'], ['fa-calendar-days', L('جدول الصيانة', 'PM calendar'), 'calendar'], ['fa-boxes-stacked', L('المخزن', 'Stock'), 'inventory'], ['fa-stopwatch', L('التقارير', 'Analytics'), 'reports'], ['fa-file-pdf', L('تقرير PDF', 'Monthly PDF'), 'monthlyPdfReport']];
+  function paintBar() {
+    $('gmgAiOverlay').dir = isAr() ? 'rtl' : 'ltr';
+    $('gmgAiInput').placeholder = L('اكتب سؤالك عن المعدات أو الفحوصات أو الأعطال…', 'Ask about equipment, inspections or faults…');
+    $('gmgAiSub').textContent = L('يقرأ بيانات التطبيق الحية • للقراءة فقط', 'Reads live app data • read-only');
+    $('gmgAiChips').innerHTML = CHIPS().map((c, i) => '<button type="button" class="ai-chip" data-i="' + i + '">' + esc(c) + '</button>').join('');
+    $('gmgAiChips').querySelectorAll('.ai-chip').forEach((b) => (b.onclick = () => api.ask(CHIPS()[+b.dataset.i])));
+    $('gmgAiTools').innerHTML = TOOLS().map((t, i) => '<button type="button" class="ai-tool" data-i="' + i + '"><i class="fas ' + t[0] + '"></i> ' + esc(t[1]) + '</button>').join('');
+    $('gmgAiTools').querySelectorAll('.ai-tool').forEach((b) => (b.onclick = () => { const k = TOOLS()[+b.dataset.i][2]; api.close(); try { window.gmgPro && window.gmgPro[k] && window.gmgPro[k](); } catch (e) { console.warn(e); } }));
+  }
+  function addMsg(role, text, tag) {
+    const box = $('gmgAiMsgs'); const w = document.createElement('div'); w.className = 'flex ' + (role === 'user' ? 'justify-start' : 'justify-end');
+    if (isAr()) w.style.justifyContent = role === 'user' ? 'flex-start' : 'flex-end'; else w.style.justifyContent = role === 'user' ? 'flex-end' : 'flex-start';
+    w.innerHTML = '<div><div class="ai-msg ' + (role === 'user' ? 'ai-user' : 'ai-bot') + '">' + fmt(text) + '</div>' + (tag ? '<div class="ai-tag">' + esc(tag) + '</div>' : '') + '</div>';
+    box.appendChild(w); box.scrollTop = box.scrollHeight; return w;
+  }
+  function welcome() { addMsg('bot', ansHelp(), L('محلي', 'local')); }
+  const api = {
+    open(q) {
+      ensureUI(); paintBar(); const o = $('gmgAiOverlay'); o.classList.add('on'); S.open = true; document.body.style.overflow = 'hidden';
+      if (!$('gmgAiMsgs').children.length) welcome();
+      if (q) api.ask(q); else setTimeout(() => { try { $('gmgAiInput').focus(); } catch (e) {} }, 100);
+    },
+    close() { const o = $('gmgAiOverlay'); if (o) o.classList.remove('on'); S.open = false; document.body.style.overflow = ''; },
+    async ask(q) {
+      q = String(q || '').trim(); if (!q) return;
+      if (!S.open) { api.open(); }
+      if (S.busy) return; S.busy = true;
+      addMsg('user', q); const typing = addMsg('bot', '…'); typing.querySelector('.ai-msg').innerHTML = '<span class="ai-dots"><span>●</span><span>●</span><span>●</span></span>';
+      let res;
+      try { res = await route(q); } catch (e) { console.error('AI route', e); res = { text: '⚠️ ' + L('حدث خطأ غير متوقع أثناء قراءة البيانات.', 'Unexpected error while reading the data.'), src: 'error' }; }
+      typing.remove();
+      addMsg('bot', res.text, res.src === 'cloud' ? L('ذكاء سحابي', 'Cloud AI') + (res.model ? ' • ' + res.model : '') : res.src === 'fallback' ? L('بيانات التطبيق', 'App data') : L('محلي', 'local'));
+      S.history.push({ role: 'user', text: q }); S.history.push({ role: 'model', text: short(res.text, 900) }); if (S.history.length > 10) S.history = S.history.slice(-10);
+      S.busy = false; const inp = $('gmgAiInput'); if (inp && S.open) { try { inp.focus(); } catch (e) {} }
+    },
+    cardHtml() {
+      const chips = [L('الأعطال المفتوحة', 'Open faults'), L('الصيانة المستحقة', 'Due maintenance'), L('فحوصات اليوم', "Today's inspections")];
+      const qs = [L('ما هي الأعطال المفتوحة؟', 'What are the open faults?'), L('المعدات المستحقة للصيانة', 'Equipment due for maintenance'), L('الفحوصات التي لم تتم اليوم', 'Inspections missing today')];
+      return '<div id="gmgAiCard" class="gmg-pro-card p-4 flex flex-col gap-3">' +
+        '<div class="flex items-center gap-3"><span class="w-12 h-12 rounded-2xl text-white flex items-center justify-center text-xl flex-shrink-0" style="background:linear-gradient(135deg,#7c3aed,#2563eb)"><i class="fas fa-robot"></i></span>' +
+        '<div class="min-w-0"><div class="text-[10px] font-extrabold" style="color:#7c3aed">AI MAINTENANCE ASSISTANT</div><h3 class="font-extrabold">' + esc(L('المساعد الذكي للصيانة', 'AI Maintenance Assistant')) + '</h3></div></div>' +
+        '<p class="text-[11px] text-slate-500 leading-relaxed">' + esc(L('اسأل عن الأعطال والفحوصات وساعات التشغيل والصيانة المستحقة من بيانات التطبيق مباشرة.', 'Ask about faults, inspections, running hours and due maintenance straight from your app data.')) + '</p>' +
+        '<div class="flex flex-wrap gap-1.5">' + chips.map((c, i) => '<button type="button" class="text-[11px] font-bold px-2.5 py-1.5 rounded-full" style="background:#ede9fe;color:#5b21b6" onclick="gmgAI.ask(' + JSON.stringify(qs[i]).replace(/"/g, '&quot;') + ')">' + esc(c) + '</button>').join('') + '</div>' +
+        '<button type="button" onclick="gmgAI.open()" class="w-full text-white font-extrabold py-2.5 rounded-xl text-xs" style="background:linear-gradient(90deg,#7c3aed,#2563eb)"><i class="fas fa-comments"></i> ' + esc(L('افتح المساعد', 'Open assistant')) + '</button></div>';
+    },
+    _route: route
+  };
+  window.gmgAI = api;
 })();
 </script>
 
