@@ -126,6 +126,13 @@
         }
     </script>
 
+    <script>
+    window.gmgNormModel = function (m) {
+        if (!m) return 'gemini-3.8-flash';
+        if (/^gemini-(1\.5|2\.0|2\.5)/.test(m)) return 'gemini-3.8-flash';
+        return m;
+    };
+    </script>
     <style>
         body { font-family: 'Cairo', 'Inter', sans-serif; background-color: #f1f5f9; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -577,11 +584,15 @@
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">النموذج الذكي (Gemini Model)</label>
                                     <select id="admin-gemini-model" class="w-full border rounded-xl px-3 py-2 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-cyan-500 outline-none font-bold text-slate-800">
-                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (سريع، مجاني، مستقر)</option>
-                                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (الجيل الأحدث)</option>
-                                        <option value="builtin">المحرك الخبير المدمج فقط (بدون Gemini)</option>
+                                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (الموصى به، مجاني)</option>
+<option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (أخف وأسرع)</option>
+<option value="builtin">المحرك الخبير المدمج فقط (بدون Gemini)</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">رابط الخادم الآمن (Proxy URL) — اختياري، يُفضَّل استخدامه بدل المفتاح</label>
+                                <input type="text" id="admin-ai-proxy-url" dir="ltr" placeholder="https://...cloudfunctions.net/geminiProxy" class="w-full border rounded-xl px-3.5 py-2 text-xs sm:text-sm bg-white font-mono text-left focus:ring-2 focus:ring-cyan-500 outline-none">
                             </div>
                             
                             <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
@@ -7162,9 +7173,9 @@
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">النموذج</label>
                     <select id="gmgGeminiModelSelect" class="w-full border rounded-xl px-3 py-2 text-xs bg-white dark:bg-slate-900">
-                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (سريع ومجاني)</option>
-                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (الجيل الأحدث)</option>
-                        <option value="builtin">المحرك الخبير المدمج فقط (Offline)</option>
+                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (الموصى به، مجاني)</option>
+<option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (أخف وأسرع)</option>
+<option value="builtin">المحرك الخبير المدمج فقط (بدون Gemini)</option>
                     </select>
                 </div>
             </div>
@@ -7357,13 +7368,14 @@ window.gmgAi = (function () {
         if (elPm) elPm.textContent = ctx.due4000.length;
         if (elInv) elInv.textContent = ctx.lowInventory.length;
 
-        var key = localStorage.getItem('gmg_gemini_key') || '';
-        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash';
+        var _c = getModelAndKey();
+        var key = _c.key || _c.proxy;
+        var model = _c.model;
         var txt = document.getElementById('aiEngineStatusText');
         var badge = document.getElementById('aiEngineBadge');
         if (txt && badge) {
             if (key && model !== 'builtin') {
-                txt.textContent = 'Gemini Flash (' + (model.indexOf('2.0') !== -1 ? '2.0' : '1.5') + ') • متصل';
+                txt.textContent = model + (_c.proxy ? ' (آمن) • متصل' : ' • متصل');
                 badge.className = 'inline-flex items-center gap-1 text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full font-bold';
             } else {
                 txt.textContent = 'المحرك الخبير المدمج (مجاني 100%)';
@@ -7857,80 +7869,191 @@ window.gmgAi = (function () {
         return runBuiltInDiagnostic('diagnostic');
     }
 
-    async function queryGeminiApi(userPrompt) {
-        var apiKey = (typeof appState !== 'undefined' && appState.aiConfig && appState.aiConfig.apiKey) || localStorage.getItem('gmg_gemini_key') || '';
-        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash';
+    // ============================================================
+    // المرحلة 1: ذاكرة محادثة + systemInstruction + تقليل البيانات + دعم Proxy
+    // ============================================================
+    var chatHistory = [];            // [{role:'user'|'model', text:'...'}]
+    var MAX_HISTORY_PAIRS = 8;       // آخر 8 أسئلة وأجوبة
 
-        if (!apiKey || model === 'builtin') {
+    // تطبيع النص العربي للمقارنة: أرقام هندية، تشكيل، همزات، ة/ه، ى/ي، "ال" التعريف
+    function normAr(s) {
+        var t = String(s || '').toLowerCase()
+            .replace(/[\u0660-\u0669]/g, function (d) { return String(d.charCodeAt(0) - 0x660); })
+            .replace(/[\u06F0-\u06F9]/g, function (d) { return String(d.charCodeAt(0) - 0x6F0); })
+            .replace(/[\u060C\u061B\u061F]/g, ' ')
+            .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+            .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
+            .replace(/[^a-z0-9\u0600-\u06FF]+/g, ' ').trim();
+        return t.split(' ').filter(Boolean).map(function (w) {
+            return (w.length > 3 && w.indexOf('ال') === 0) ? w.slice(2) : w;
+        }).join(' ');
+    }
+
+    function getModelAndKey() {
+        var cfg = (typeof appState !== 'undefined' && appState.aiConfig) || {};
+        var model = (window.gmgNormModel ? window.gmgNormModel(cfg.model || localStorage.getItem('gmg_gemini_model')) : (cfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-3.8-flash'));
+        var key = cfg.apiKey || localStorage.getItem('gmg_gemini_key') || '';
+        var proxy = cfg.proxyUrl || localStorage.getItem('gmg_ai_proxy') || '';
+        return { model: model, key: key, proxy: proxy };
+    }
+
+    function describeEquip(item, ctx) {
+        var eq = item.equip, f = item.factory, ld = item.latestData || {};
+        var r = [];
+        if (ld.temp !== undefined && ld.temp !== '') r.push('الحرارة: ' + ld.temp + '°C');
+        if (ld.press !== undefined && ld.press !== '') r.push('الضغط: ' + ld.press + ' Bar');
+        if (ld.vib !== undefined && ld.vib !== '') r.push('الاهتزاز: ' + ld.vib + ' mm/s');
+        if (ld.status) r.push('وضع التشغيل: ' + ld.status);
+        if (ld.oil) r.push('مستوى الزيت: ' + (ld.oil === 'normal' ? 'طبيعي' : 'منخفض'));
+        var when = item.latestRec && item.latestRec.date ? (' (آخر فحص: ' + item.latestRec.date + ')') : '';
+        var sStr = r.length ? (r.join(' • ') + when) : 'لم تسجل قراءة فحص حديثة';
+        var fault = ctx.openAlerts.find(function (a) { return a.equipId === eq.id; });
+        var rem = 4000 - (Number(eq.hours || 0) % 4000);
+        return '• [' + f.name + '] ' + eq.name + ' (ID: ' + eq.id + ') | الساعات: ' + (eq.hours || 0) +
+            ' HR | ' + sStr + ' | متبقي لصيانة 4000h: ' + rem + ' ساعة | ' +
+            (fault ? ('🚨 عطل نشط: ' + fault.description) : 'لا أعطال');
+    }
+
+    // يختار فقط المعدات المرتبطة بالسؤال + المعدات ذات المشاكل (بدل إرسال كل شيء)
+    function pickRelevantEquipment(ctx, userPrompt) {
+        var q = ' ' + normAr(userPrompt) + ' ';
+        var qTokens = q.trim().split(' ');
+        var picked = [], seen = {};
+        function add(item) { if (item && !seen[item.equip.id]) { seen[item.equip.id] = 1; picked.push(item); } }
+
+        // 1) مطابقة اسم المعدة أو رقمها
+        var qNums = qTokens.filter(function (t) { return /^\d+$/.test(t); });
+        ctx.equipmentList.forEach(function (item) {
+            var nameN = normAr(item.equip.name);
+            var toks = nameN.split(' ').filter(Boolean);
+            var words = toks.filter(function (t) { return !/^\d+$/.test(t); });
+            var nums = toks.filter(function (t) { return /^\d+$/.test(t); });
+            var inQ = function (t) { return qTokens.indexOf(t) !== -1; };
+            var nameHit = nameN && q.indexOf(' ' + nameN + ' ') !== -1;
+            // كل كلمات الاسم موجودة، والرقم مطابق (أو السؤال بلا رقم فيُترك للنموذج يحدد)
+            var tokHit = words.length > 0 && words.every(inQ) && (nums.every(inQ) || qNums.length === 0);
+            var idHit = item.equip.id && q.indexOf(' ' + normAr(item.equip.id) + ' ') !== -1;
+            if (nameHit || tokHit || idHit) add(item);
+        });
+
+        // 2) لو ما لقينا: مطابقة بالرقم فقط (مثل "كمبرسور 5") ويقرر النموذج
+        if (!picked.length) {
+            var nums = qTokens.filter(function (t) { return /^\d+$/.test(t); });
+            if (nums.length) {
+                ctx.equipmentList.forEach(function (item) {
+                    var toks = normAr(item.equip.name).split(' ');
+                    if (nums.some(function (n) { return toks.indexOf(n) !== -1; }) && picked.length < 12) add(item);
+                });
+            }
+        }
+
+        // 3) لو ذكر اسم مصنع ولم نجد معدة محددة: معدات هذا المصنع
+        if (!picked.length) {
+            ctx.equipmentList.forEach(function (item) {
+                var ft = normAr(item.factory.name).split(' ').filter(Boolean);
+                if (ft.length && ft.every(function (t) { return qTokens.indexOf(t) !== -1; }) && picked.length < 25) add(item);
+            });
+        }
+
+        // 4) دائماً: المعدات ذات الأعطال/الإنذارات/الاستحقاق
+        var byId = {};
+        ctx.equipmentList.forEach(function (it) { byId[it.equip.id] = it; });
+        ctx.openAlerts.forEach(function (a) { add(byId[a.equipId]); });
+        ctx.anomalies.forEach(function (a) { add(byId[a.equipId]); });
+        ctx.due4000.forEach(function (d) { add(byId[d.equip.id]); });
+
+        return picked.slice(0, 40);
+    }
+
+    function buildSystemInstruction(ctx, userPrompt) {
+        var picked = pickRelevantEquipment(ctx, userPrompt);
+        var equipText = picked.map(function (it) { return describeEquip(it, ctx); }).join('\n');
+
+        var wantsStock = /زيت|زيوت|مخزن|مخزون|قطع|فلتر|stock|oil|filter|spare/.test(normAr(userPrompt));
+        var inv = wantsStock ? ctx.inventory.slice(0, 60) : ctx.lowInventory.slice(0, 25);
+        var invText = JSON.stringify(inv.map(function (i) { return { item: i.name, qty: i.qty, min: i.minQty, unit: i.unit }; }));
+
+        var alertsText = JSON.stringify(ctx.openAlerts.slice(0, 20).map(function (a) {
+            return { factory: a.factoryName, equip: a.equipName, issue: a.description, tech: a.assignedTo || a.user };
+        }));
+
+        var u = ctx.currentUser || {};
+        var now = new Date().toLocaleString('ar-SA');
+
+        return 'أنت المساعد الفني الذكي لمجموعة صيانة الغاز (GMG CMMS) في شركة الراجحي للحديد.\n' +
+            'المستخدم الحالي: ' + (u.name || 'فني') + ' (' + (u.role === 'admin' ? 'مشرف' : 'فني') + '). الوقت الآن: ' + now + '.\n\n' +
+            'قواعد الإجابة:\n' +
+            '1. افهم العامية المصرية والخليجية والفصحى وأي صياغة طبيعية، ولا تشترط صيغة معينة للسؤال.\n' +
+            '2. أجب على قدّ السؤال بالظبط وبدون حشو. التقرير الطويل فقط إذا طُلب تقرير أو تسليم وردية.\n' +
+            '3. التزم بالبيانات أدناه. لا تخترع قراءات أو أرقاماً غير موجودة؛ إن لم توجد قراءة قل ذلك صراحة.\n' +
+            '4. إذا وُجد أكثر من معدة بنفس الاسم/الرقم ولم يحدد المصنع، اذكر كل واحدة باختصار مع اسم مصنعها.\n' +
+            '5. اذكر هل القراءة طبيعية أم لا (حرارة ≥95°C أو اهتزاز ≥4.5 mm/s أو ضغط خارج 4–12 Bar يعتبر غير طبيعي) واذكر تاريخ آخر فحص.\n' +
+            '6. في الأسئلة الميكانيكية قدّم حلاً عملياً مباشراً، وفي معدات الأكسجين السائل (LOX) شدّد على منع الزيوت البترولية واستخدام شحم PFPE فقط.\n' +
+            '7. إذا كانت المعدة المسؤول عنها غير ظاهرة أدناه، اطلب من المستخدم تحديد اسمها بدل التخمين.\n\n' +
+            'ملخص عام: عدد المصانع ' + ctx.factoriesCount + '، إجمالي المعدات ' + ctx.equipmentCount +
+            '، البلاغات المفتوحة ' + ctx.openAlerts.length + '، معدات مستحقة 4000h: ' + ctx.due4000.length +
+            '، أصناف مخزن منخفضة: ' + ctx.lowInventory.length + '.\n\n' +
+            'المعدات ذات الصلة بالسؤال (' + picked.length + ' من ' + ctx.equipmentCount + '):\n' + (equipText || 'لا يوجد') + '\n\n' +
+            'الأعطال النشطة:\n' + alertsText + '\n\n' +
+            (wantsStock ? 'المخزن (الزيوت وقطع الغيار):\n' : 'نواقص المخزن:\n') + invText;
+    }
+
+    async function queryGeminiApi(userPrompt) {
+        var cfg = getModelAndKey();
+        if ((!cfg.key && !cfg.proxy) || cfg.model === 'builtin') {
             return answerFreeExpertQuery(userPrompt);
         }
 
         var ctx = getLiveContext();
-        var equipSensorsSummary = ctx.equipmentList.map(function(item) {
-            var eq = item.equip;
-            var f = item.factory;
-            var ld = item.latestData || {};
-            var rParts = [];
-            if (ld.temp !== undefined && ld.temp !== '') rParts.push('الحرارة: ' + ld.temp + '°C');
-            if (ld.press !== undefined && ld.press !== '') rParts.push('الضغط: ' + ld.press + ' Bar');
-            if (ld.vib !== undefined && ld.vib !== '') rParts.push('الاهتزاز: ' + ld.vib + ' mm/s');
-            if (ld.status) rParts.push('وضع التشغيل: ' + ld.status);
-            if (ld.oil) rParts.push('مستوى الزيت: ' + (ld.oil === 'normal' ? 'طبيعي' : 'منخفض'));
-            var sStr = rParts.length ? rParts.join(' • ') : 'لم تسجل قراءة فحص حديثة';
-            var hasFault = ctx.openAlerts.find(function(a) { return a.equipId === eq.id; });
-            var fStr = hasFault ? ('🚨 عطل نشط: ' + hasFault.description) : 'لا أعطال';
-            var rem = 4000 - (Number(eq.hours || 0) % 4000);
-            return '• [' + f.name + '] ' + eq.name + ' (ID: ' + eq.id + ') -> الساعات: ' + eq.hours + ' HR | ' + sStr + ' | متبقي 4000h: ' + rem + ' ساعة | ' + fStr;
-        }).join('\n');
+        var contents = chatHistory.slice(-MAX_HISTORY_PAIRS * 2).map(function (m) {
+            return { role: m.role, parts: [{ text: m.text }] };
+        });
+        contents.push({ role: 'user', parts: [{ text: userPrompt }] });
 
-        var systemPrompt = 'أنت المساعد الفني الذكي لمجموعة صيانة الغاز (GMG CMMS) في شركة الراجحي للحديد.\n' +
-            'تتعامل مع المهندسين والفنيين بشكل طبيعي ومريح ومرن وذكي جداً كأي شات ذكاء اصطناعي احترافي (مثل ChatGPT / Claude / Gemini).\n\n' +
-            'بيانات المعدات وقراءات الحساسات اللحظية المأخوذة الآن من قاعدة البيانات السحابية (Firebase):\n' +
-            equipSensorsSummary + '\n\n' +
-            'بيانات الأعطال النشطة:\n' +
-            JSON.stringify(ctx.openAlerts.map(function(a) { return { factory: a.factoryName, equip: a.equipName, issue: a.description, tech: a.assignedTo || a.user }; })) + '\n\n' +
-            'نواقص المخزن والزيوت:\n' +
-            JSON.stringify(ctx.lowInventory.map(function(i) { return { item: i.name, qty: i.qty, min: i.minQty, unit: i.unit }; })) + '\n\n' +
-            'قواعد التعامل والإجابة الطبيعية:\n' +
-            '1. تعامل بطبيعتك بذكاء ومرونة وبلهجة عربية مهنية وسلسة تفهم العامية والمصطلحات الدارجة والمصرية والخليجية والفصحى.\n' +
-            '2. لا تطلب أو تشترط صيغة معينة للأسئلة! افهم قصد المستخدم من أي صياغة طبيعية يكتبها.\n' +
-            '3. أجب "على قد السؤال" بالظبط وبذكاء وبدون إطالة أو حشو:\n' +
-            '   * إذا سأل عن درجة الحرارة (مثلاً: "درجة حرارة كمبرسور 5" أو "كمبرسور 3 حرارته كام"): اذكر له درجة الحرارة فوراً من البيانات أعلاه، ووضح هل هي طبيعية أم مرتفعة، وضع سياقاً مختصراً في سطرين.\n' +
-            '   * إذا وجد أكثر من كمبرسور بنفس الرقم (مثلاً كمبرسور 5 موجود في مالت شوب وHRMC وHRMD) ولم يحدد المصنع: اذكر له حرارة كل مصنع باختصار وسرعة في أسطر سريعة.\n' +
-            '   * إذا سأل عن الضغط، الساعات، الأعطال، أو الزيوت: أجب عن الخاصية التي طلبها بالظبط.\n' +
-            '   * إذا سأل بشكل عام عن حالة المعدة أو المصنع: لخص له الوضع بأسلوب محادثة مريح وسريع.\n' +
-            '   * إذا سأل سؤالاً ميكانيكياً أو استشارة فنية: قدم له الحل العملي المباشر.\n' +
-            '4. لا تجبر نفسك على قالب موحد أو تقرير طويل إلا إذا طلب المستخدم تقريراً شاملاً أو تسليم وردية.';
-
-        var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-        var payload = {
-            contents: [
-                {
-                    role: 'user',
-                    parts: [
-                        { text: systemPrompt + '\n\nUser Question: ' + userPrompt }
-                    ]
-                }
-            ],
-            generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 1500
-            }
+        var body = {
+            systemInstruction: { parts: [{ text: buildSystemInstruction(ctx, userPrompt) }] },
+            contents: contents,
+            generationConfig: { maxOutputTokens: 8192 }
         };
 
         try {
-            var resp = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!resp.ok) {
-                console.warn('Gemini API call failed, falling back to built-in expert engine');
-                return answerFreeExpertQuery(userPrompt) + '\n\n*(ملاحظة: تعذر الاتصال بـ Gemini API [' + resp.status + ']، وتمت الإجابة عبر المحرك الخبير المدمج)*';
+            var resp;
+            if (cfg.proxy) {
+                // الوضع الآمن: المفتاح على الخادم، والتطبيق يرسل توكن Firebase فقط
+                var idToken = '';
+                try { idToken = await window.firebaseAuth.currentUser.getIdToken(); } catch (e) {}
+                resp = await fetch(cfg.proxy, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+                    body: JSON.stringify({ model: cfg.model, body: body })
+                });
+            } else {
+                // الوضع المباشر (مؤقت): المفتاح من المتصفح
+                var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + cfg.model + ':generateContent?key=' + cfg.key;
+                resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
             }
+
+            if (!resp.ok) {
+                console.warn('Gemini call failed:', resp.status);
+                var hint = resp.status === 404 ? ' (اسم النموذج غير صالح أو متوقف — غيّره من إعدادات الذكاء الاصطناعي)' :
+                           resp.status === 429 ? ' (تجاوزت الحد المجاني، حاول بعد قليل)' : '';
+                return answerFreeExpertQuery(userPrompt) + '\n\n*(ملاحظة: تعذر الاتصال بـ Gemini [' + resp.status + ']' + hint + '، وتمت الإجابة عبر المحرك الخبير المدمج)*';
+            }
+
             var data = await resp.json();
-            var text = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
-            return text || answerFreeExpertQuery(userPrompt);
+            var parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+            var text = parts ? parts.map(function (p) { return p.text || ''; }).join('') : '';
+            if (!text) return answerFreeExpertQuery(userPrompt);
+
+            // حفظ الدور في الذاكرة (أزواج فقط)
+            chatHistory.push({ role: 'user', text: userPrompt });
+            chatHistory.push({ role: 'model', text: text });
+            if (chatHistory.length > MAX_HISTORY_PAIRS * 2) chatHistory = chatHistory.slice(-MAX_HISTORY_PAIRS * 2);
+            return text;
         } catch (err) {
             console.error('Gemini fetch error:', err);
             return answerFreeExpertQuery(userPrompt) + '\n\n*(تمت الإجابة عبر المحرك الخبير المدمج)*';
@@ -8000,6 +8123,7 @@ window.gmgAi = (function () {
             if (isVoiceActive) this.stopVoice();
         },
         clearChat: function () {
+            chatHistory = [];
             var container = document.getElementById('aiChatMessages');
             if (container) {
                 container.innerHTML = '<div class="flex gap-3 items-start animate-fade-in">' +
@@ -8021,7 +8145,7 @@ window.gmgAi = (function () {
                 drawer.classList.toggle('hidden');
                 if (!drawer.classList.contains('hidden')) {
                     document.getElementById('gmgGeminiKeyInput').value = localStorage.getItem('gmg_gemini_key') || '';
-                    document.getElementById('gmgGeminiModelSelect').value = localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash';
+                    document.getElementById('gmgGeminiModelSelect').value = window.gmgNormModel(localStorage.getItem('gmg_gemini_model'));
                 }
             }
         },
@@ -8262,13 +8386,16 @@ window.gmgAi = (function () {
 
         const aiCfg = appState.aiConfig || {};
         const activeKey = aiCfg.apiKey || localStorage.getItem('gmg_gemini_key') || '';
-        const activeModel = aiCfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash';
+        const activeModel = aiCfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-3.8-flash';
 
         if (keyInput && isMaster) keyInput.value = activeKey;
-        if (modelSelect && isMaster) modelSelect.value = activeModel;
+        if (modelSelect && isMaster) modelSelect.value = window.gmgNormModel(activeModel);
+        const proxyInput = document.getElementById('admin-ai-proxy-url');
+        const activeProxy = aiCfg.proxyUrl || localStorage.getItem('gmg_ai_proxy') || '';
+        if (proxyInput && isMaster) proxyInput.value = activeProxy;
 
         if (statusBadge) {
-            if (activeKey && activeModel !== 'builtin') {
+            if ((activeKey || activeProxy) && activeModel !== 'builtin') {
                 statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> متصل بـ ' + activeModel + ' سحابياً';
                 statusBadge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1.5';
             } else {
@@ -8284,16 +8411,18 @@ window.gmgAi = (function () {
             return;
         }
         const key = document.getElementById('admin-gemini-api-key')?.value?.trim() || '';
-        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-1.5-flash';
+        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-3.8-flash';
 
         if (key && !key.startsWith('AIzaSy')) {
             if (!confirm('مفتاح Google Gemini يبدأ عادة بـ AIzaSy... هل تريد حفظ هذا المفتاح رغم ذلك؟')) return;
         }
 
+        const proxyUrl = document.getElementById('admin-ai-proxy-url')?.value?.trim() || '';
         const aiCfg = {
             apiKey: key,
+            proxyUrl: proxyUrl,
             model: model,
-            enabled: !!key,
+            enabled: !!key || !!proxyUrl,
             updatedAt: Date.now(),
             updatedBy: appState.currentUser.email || 'Master Admin'
         };
@@ -8304,6 +8433,7 @@ window.gmgAi = (function () {
         } else {
             localStorage.removeItem('gmg_gemini_key');
         }
+        if (proxyUrl) localStorage.setItem('gmg_ai_proxy', proxyUrl); else localStorage.removeItem('gmg_ai_proxy');
 
         if (window.GMG && window.GMG.saveAiConfig) {
             await window.GMG.saveAiConfig(aiCfg);
@@ -8311,7 +8441,7 @@ window.gmgAi = (function () {
 
         renderAdminAiSection();
         if (typeof gmgAi !== 'undefined' && gmgAi.updateLiveStatus) gmgAi.updateLiveStatus();
-        showToast(key ? 'تم حفظ وتفعيل مفتاح Gemini لجميع المستخدمين في السحابة بنجاح!' : 'تم التفعيل على المحرك الخبير المدمج', 'success');
+        showToast((key || proxyUrl) ? 'تم حفظ وتفعيل مفتاح Gemini لجميع المستخدمين في السحابة بنجاح!' : 'تم التفعيل على المحرك الخبير المدمج', 'success');
     };
 
     window.clearAdminGeminiConfig = async function() {
@@ -8331,7 +8461,7 @@ window.gmgAi = (function () {
 
     window.testAdminGeminiConnection = async function() {
         const key = document.getElementById('admin-gemini-api-key')?.value?.trim() || localStorage.getItem('gmg_gemini_key') || '';
-        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-1.5-flash';
+        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-3.8-flash';
         if (!key) {
             showToast('ادخل مفتاح Gemini API أولاً لإجراء الاختبار', 'info');
             return;
