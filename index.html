@@ -7914,54 +7914,67 @@ window.gmgAi = (function () {
             (fault ? ('🚨 عطل نشط: ' + fault.description) : 'لا أعطال');
     }
 
-    // يختار فقط المعدات المرتبطة بالسؤال + المعدات ذات المشاكل (بدل إرسال كل شيء)
+    // مرادفات عربية -> أسماء المعدات الإنجليزية الموجودة في التطبيق
+    var SYN = {
+        'كمبرسور': 'compressor', 'كمبروسر': 'compressor', 'كومبرسور': 'compressor', 'ضاغط': 'compressor',
+        'دراير': 'dryer', 'درايير': 'dryer', 'مجفف': 'dryer',
+        'فلتر': 'filter', 'فلاتر': 'filter', 'زيت': 'oil', 'زيوت': 'oil',
+        'خزان': 'tank', 'تانك': 'tank', 'طلمبه': 'pump', 'مضخه': 'pump', 'بمب': 'pump',
+        'مبرد': 'chiller', 'تشيلر': 'chiller', 'مولد': 'generator', 'جنراتور': 'generator',
+        'اطلس': 'atlas', 'بوجي': 'boge', 'هواء': 'air'
+    };
+    var GENERIC = { main: 1, air: 1, the: 1 };
+    var lastMatchedIds = [];
+
+    // يختار فقط المعدات المرتبطة بالسؤال (مع تصفية المصنع المذكور)
     function pickRelevantEquipment(ctx, userPrompt) {
-        var q = ' ' + normAr(userPrompt) + ' ';
-        var qTokens = q.trim().split(' ');
+        var qTokens = normAr(userPrompt).split(' ').filter(Boolean);
+        qTokens.slice().forEach(function (t) { if (SYN[t]) qTokens.push(SYN[t]); });
+        var qNums = qTokens.filter(function (t) { return /^\d+$/.test(t); });
+        var inQ = function (t) { return qTokens.indexOf(t) !== -1; };
+
+        // المصانع المذكورة في السؤال
+        var factories = {};
+        ctx.equipmentList.forEach(function (it) {
+            var ft = normAr(it.factory.name).split(' ').filter(Boolean);
+            if (ft.length && ft.every(inQ)) factories[it.factory.name] = true;
+        });
+        var hasFactory = Object.keys(factories).length > 0;
+        var inFactory = function (it) { return !hasFactory || factories[it.factory.name]; };
+
+        var scored = [];
+        ctx.equipmentList.forEach(function (it) {
+            if (!inFactory(it)) return;
+            if (it.equip.id && inQ(normAr(it.equip.id))) { scored.push({ it: it, s: 100 }); return; }
+            var toks = normAr(it.equip.name).split(' ').filter(Boolean);
+            var words = toks.filter(function (t) { return !/^\d+$/.test(t) && !GENERIC[t]; });
+            var nums = toks.filter(function (t) { return /^\d+$/.test(t); });
+            var wm = words.filter(inQ).length;
+            var numHit = nums.some(inQ);
+            var numOk = nums.length === 0 || numHit || qNums.length === 0;
+            if (wm >= 1 && numOk) scored.push({ it: it, s: wm + (numHit ? 2 : 0) });
+        });
+        scored.sort(function (a, b) { return b.s - a.s; });
+
+        var matched = scored.slice(0, 12).map(function (x) { return x.it; });
+        // ذكر مصنعاً فقط بدون معدة محددة: معدات هذا المصنع
+        if (!matched.length && hasFactory) {
+            matched = ctx.equipmentList.filter(inFactory).slice(0, 25);
+        }
+        lastMatchedIds = matched.map(function (it) { return it.equip.id; });
+
         var picked = [], seen = {};
         function add(item) { if (item && !seen[item.equip.id]) { seen[item.equip.id] = 1; picked.push(item); } }
+        matched.forEach(add);
 
-        // 1) مطابقة اسم المعدة أو رقمها
-        var qNums = qTokens.filter(function (t) { return /^\d+$/.test(t); });
-        ctx.equipmentList.forEach(function (item) {
-            var nameN = normAr(item.equip.name);
-            var toks = nameN.split(' ').filter(Boolean);
-            var words = toks.filter(function (t) { return !/^\d+$/.test(t); });
-            var nums = toks.filter(function (t) { return /^\d+$/.test(t); });
-            var inQ = function (t) { return qTokens.indexOf(t) !== -1; };
-            var nameHit = nameN && q.indexOf(' ' + nameN + ' ') !== -1;
-            // كل كلمات الاسم موجودة، والرقم مطابق (أو السؤال بلا رقم فيُترك للنموذج يحدد)
-            var tokHit = words.length > 0 && words.every(inQ) && (nums.every(inQ) || qNums.length === 0);
-            var idHit = item.equip.id && q.indexOf(' ' + normAr(item.equip.id) + ' ') !== -1;
-            if (nameHit || tokHit || idHit) add(item);
-        });
-
-        // 2) لو ما لقينا: مطابقة بالرقم فقط (مثل "كمبرسور 5") ويقرر النموذج
-        if (!picked.length) {
-            var nums = qTokens.filter(function (t) { return /^\d+$/.test(t); });
-            if (nums.length) {
-                ctx.equipmentList.forEach(function (item) {
-                    var toks = normAr(item.equip.name).split(' ');
-                    if (nums.some(function (n) { return toks.indexOf(n) !== -1; }) && picked.length < 12) add(item);
-                });
-            }
+        // سؤال عام (بدون معدة محددة): أضف المعدات ذات المشاكل
+        if (!matched.length) {
+            var byId = {};
+            ctx.equipmentList.forEach(function (it) { byId[it.equip.id] = it; });
+            ctx.openAlerts.forEach(function (a) { add(byId[a.equipId]); });
+            ctx.anomalies.forEach(function (a) { add(byId[a.equipId]); });
+            ctx.due4000.forEach(function (d) { add(byId[d.equip.id]); });
         }
-
-        // 3) لو ذكر اسم مصنع ولم نجد معدة محددة: معدات هذا المصنع
-        if (!picked.length) {
-            ctx.equipmentList.forEach(function (item) {
-                var ft = normAr(item.factory.name).split(' ').filter(Boolean);
-                if (ft.length && ft.every(function (t) { return qTokens.indexOf(t) !== -1; }) && picked.length < 25) add(item);
-            });
-        }
-
-        // 4) دائماً: المعدات ذات الأعطال/الإنذارات/الاستحقاق
-        var byId = {};
-        ctx.equipmentList.forEach(function (it) { byId[it.equip.id] = it; });
-        ctx.openAlerts.forEach(function (a) { add(byId[a.equipId]); });
-        ctx.anomalies.forEach(function (a) { add(byId[a.equipId]); });
-        ctx.due4000.forEach(function (d) { add(byId[d.equip.id]); });
-
         return picked.slice(0, 40);
     }
 
@@ -7977,6 +7990,25 @@ window.gmgAi = (function () {
             return { factory: a.factoryName, equip: a.equipName, issue: a.description, tech: a.assignedTo || a.user };
         }));
 
+        // سجل آخر الفحوصات للمعدات المذكورة بالسؤال (حتى 3 معدات × 10 قراءات)
+        var histText = '';
+        var hist = (typeof appState !== 'undefined' && appState.dailyInspections) || {};
+        lastMatchedIds.slice(0, 3).forEach(function (id) {
+            var list = (hist[id] || []).slice().sort(function (a, b) {
+                return String(b.date).localeCompare(String(a.date));
+            }).slice(0, 10);
+            if (!list.length) return;
+            var it = picked.find(function (p) { return p.equip.id === id; });
+            histText += '• ' + (it ? '[' + it.factory.name + '] ' + it.equip.name : id) + ':\n' + list.map(function (r) {
+                var d = r.data || {}, x = [];
+                if (d.temp !== undefined && d.temp !== '') x.push('حرارة ' + d.temp + '°C');
+                if (d.press !== undefined && d.press !== '') x.push('ضغط ' + d.press + ' Bar');
+                if (d.vib !== undefined && d.vib !== '') x.push('اهتزاز ' + d.vib + ' mm/s');
+                if (d.oil) x.push('زيت ' + d.oil);
+                return '   - ' + r.date + ': ' + (x.join(' • ') || 'بدون قراءات رقمية');
+            }).join('\n') + '\n';
+        });
+
         var u = ctx.currentUser || {};
         var now = new Date().toLocaleString('ar-SA');
 
@@ -7989,11 +8021,13 @@ window.gmgAi = (function () {
             '4. إذا وُجد أكثر من معدة بنفس الاسم/الرقم ولم يحدد المصنع، اذكر كل واحدة باختصار مع اسم مصنعها.\n' +
             '5. اذكر هل القراءة طبيعية أم لا (حرارة ≥95°C أو اهتزاز ≥4.5 mm/s أو ضغط خارج 4–12 Bar يعتبر غير طبيعي) واذكر تاريخ آخر فحص.\n' +
             '6. في الأسئلة الميكانيكية قدّم حلاً عملياً مباشراً، وفي معدات الأكسجين السائل (LOX) شدّد على منع الزيوت البترولية واستخدام شحم PFPE فقط.\n' +
-            '7. إذا كانت المعدة المسؤول عنها غير ظاهرة أدناه، اطلب من المستخدم تحديد اسمها بدل التخمين.\n\n' +
+            '7. إذا كانت المعدة المسؤول عنها غير ظاهرة أدناه، اطلب من المستخدم تحديد اسمها بدل التخمين.\n' +
+            '8. إذا سأل عن يوم سابق (مثل "من 4 أيام") استخدم قسم السجل التاريخي أدناه واذكر التاريخ الفعلي للقراءة؛ وإن لم يوجد سجل لذلك اليوم قل ذلك ولا تخمّن.\n\n' +
             'ملخص عام: عدد المصانع ' + ctx.factoriesCount + '، إجمالي المعدات ' + ctx.equipmentCount +
             '، البلاغات المفتوحة ' + ctx.openAlerts.length + '، معدات مستحقة 4000h: ' + ctx.due4000.length +
             '، أصناف مخزن منخفضة: ' + ctx.lowInventory.length + '.\n\n' +
             'المعدات ذات الصلة بالسؤال (' + picked.length + ' من ' + ctx.equipmentCount + '):\n' + (equipText || 'لا يوجد') + '\n\n' +
+            (histText ? 'السجل التاريخي لآخر الفحوصات (الأحدث أولاً):\n' + histText + '\n' : '') +
             'الأعطال النشطة:\n' + alertsText + '\n\n' +
             (wantsStock ? 'المخزن (الزيوت وقطع الغيار):\n' : 'نواقص المخزن:\n') + invText;
     }
@@ -8040,7 +8074,10 @@ window.gmgAi = (function () {
             if (!resp.ok) {
                 console.warn('Gemini call failed:', resp.status);
                 var hint = resp.status === 404 ? ' (اسم النموذج غير صالح أو متوقف — غيّره من إعدادات الذكاء الاصطناعي)' :
-                           resp.status === 429 ? ' (تجاوزت الحد المجاني، حاول بعد قليل)' : '';
+                           resp.status === 429 ? ' (تجاوزت الحد المجاني، حاول بعد قليل)' :
+                           resp.status === 403 && cfg.proxy ? ' (الخادم رفض موقع التطبيق — راجع ALLOWED_ORIGIN في Cloudflare)' :
+                           resp.status === 401 && cfg.proxy ? ' (توكن Firebase مرفوض — راجع FIREBASE_PROJECT_ID في Cloudflare)' :
+                           resp.status === 500 && cfg.proxy ? ' (متغير ناقص في Cloudflare، مثل GEMINI_API_KEY)' : '';
                 return answerFreeExpertQuery(userPrompt) + '\n\n*(ملاحظة: تعذر الاتصال بـ Gemini [' + resp.status + ']' + hint + '، وتمت الإجابة عبر المحرك الخبير المدمج)*';
             }
 
@@ -8056,7 +8093,10 @@ window.gmgAi = (function () {
             return text;
         } catch (err) {
             console.error('Gemini fetch error:', err);
-            return answerFreeExpertQuery(userPrompt) + '\n\n*(تمت الإجابة عبر المحرك الخبير المدمج)*';
+            var why = cfg.proxy
+                ? ' [تعذر الاتصال بالخادم الآمن: تحقق من رابط الـ Worker ومن ALLOWED_ORIGIN — ' + (err && err.message ? err.message : 'network') + ']'
+                : ' [خطأ في الشبكة]';
+            return answerFreeExpertQuery(userPrompt) + '\n\n*(تمت الإجابة عبر المحرك الخبير المدمج)*' + why;
         }
     }
 
