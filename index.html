@@ -8050,35 +8050,60 @@ window.gmgAi = (function () {
             generationConfig: { maxOutputTokens: 8192 }
         };
 
-        try {
-            var resp;
+        var FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+        var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+        async function sendOnce(model) {
             if (cfg.proxy) {
                 // الوضع الآمن: المفتاح على الخادم، والتطبيق يرسل توكن Firebase فقط
                 var idToken = '';
                 try { idToken = await window.firebaseAuth.currentUser.getIdToken(); } catch (e) {}
-                resp = await fetch(cfg.proxy, {
+                return fetch(cfg.proxy, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
-                    body: JSON.stringify({ model: cfg.model, body: body })
+                    body: JSON.stringify({ model: model, body: body })
                 });
-            } else {
-                // الوضع المباشر (مؤقت): المفتاح من المتصفح
-                var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + cfg.model + ':generateContent?key=' + cfg.key;
-                resp = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
+            }
+            // الوضع المباشر (مؤقت): المفتاح من المتصفح
+            return fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + cfg.key, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        }
+
+        try {
+            // أخطاء مؤقتة من جوجل (ازدحام): نعيد المحاولة مرة، ثم ننتقل للنموذج الأخف
+            var models = [cfg.model];
+            if (cfg.model !== FALLBACK_MODEL) models.push(FALLBACK_MODEL);
+            var resp = null, usedModel = cfg.model;
+            for (var mi = 0; mi < models.length; mi++) {
+                usedModel = models[mi];
+                for (var attempt = 0; attempt < 2; attempt++) {
+                    resp = await sendOnce(usedModel);
+                    if (resp.ok || [500, 502, 503, 504].indexOf(resp.status) === -1) break;
+                    console.warn('Gemini temporary error', resp.status, usedModel, 'attempt', attempt + 1);
+                    if (attempt === 0) await sleep(1500);
+                }
+                if (resp.ok || [500, 502, 503, 504].indexOf(resp.status) === -1) break;
             }
 
             if (!resp.ok) {
                 console.warn('Gemini call failed:', resp.status);
+                var detail = '';
+                try {
+                    var eb = await resp.text();
+                    try { detail = (JSON.parse(eb).error || {}).message || JSON.parse(eb).error || ''; } catch (e2) { detail = eb; }
+                    if (typeof detail !== 'string') detail = JSON.stringify(detail);
+                    detail = detail.slice(0, 140);
+                } catch (e3) {}
                 var hint = resp.status === 404 ? ' (اسم النموذج غير صالح أو متوقف — غيّره من إعدادات الذكاء الاصطناعي)' :
                            resp.status === 429 ? ' (تجاوزت الحد المجاني، حاول بعد قليل)' :
+                           resp.status === 503 ? ' (خوادم جوجل مزدحمة حالياً، حاول بعد دقيقة)' :
                            resp.status === 403 && cfg.proxy ? ' (الخادم رفض موقع التطبيق — راجع ALLOWED_ORIGIN في Cloudflare)' :
                            resp.status === 401 && cfg.proxy ? ' (توكن Firebase مرفوض — راجع FIREBASE_PROJECT_ID في Cloudflare)' :
                            resp.status === 500 && cfg.proxy ? ' (متغير ناقص في Cloudflare، مثل GEMINI_API_KEY)' : '';
-                return answerFreeExpertQuery(userPrompt) + '\n\n*(ملاحظة: تعذر الاتصال بـ Gemini [' + resp.status + ']' + hint + '، وتمت الإجابة عبر المحرك الخبير المدمج)*';
+                return answerFreeExpertQuery(userPrompt) + '\n\n*(ملاحظة: تعذر الاتصال بـ Gemini [' + resp.status + ']' + hint + (detail ? ' — ' + detail : '') + '، وتمت الإجابة عبر المحرك الخبير المدمج)*';
             }
 
             var data = await resp.json();
