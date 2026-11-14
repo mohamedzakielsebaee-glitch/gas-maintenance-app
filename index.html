@@ -8066,7 +8066,47 @@ window.gmgAi = (function () {
         }
     }
 
+    var GMG_AI_VERSION = '1.4';
+    console.log('[GMG-AI] assistant version', GMG_AI_VERSION, 'loaded');
+
+    // أمر تشخيص: اكتب "تشخيص كمبرسور 1 hrmd" ليعرض ما يراه المساعد فعلاً من بيانات
+    async function runDiagnostics(q) {
+        var out = ['**تشخيص المساعد (نسخة ' + GMG_AI_VERSION + ')**'];
+        try {
+            var cfg = getModelAndKey();
+            out.push('• النموذج: ' + cfg.model + ' | خادم آمن: ' + (cfg.proxy ? 'نعم' : 'لا'));
+            out.push('• GMG.fetchAllByEquip: ' + (window.GMG && typeof window.GMG.fetchAllByEquip === 'function' ? 'موجود' : 'غير موجود'));
+            var ctx = getLiveContext();
+            out.push('• عدد المعدات في ذاكرة التطبيق: ' + ctx.equipmentList.length);
+            out.push('• معدات لها فحوصات محمّلة في الذاكرة: ' + Object.keys(appState.dailyInspections || {}).length);
+            pickRelevantEquipment(ctx, q || '');
+            var ids = lastMatchedIds.slice(0, 5);
+            out.push('• معدات مطابقة للسؤال "' + (q || '') + '": ' + lastMatchedIds.length);
+            var byId = {};
+            ctx.equipmentList.forEach(function (it) { byId[it.equip.id] = it; });
+            for (var i = 0; i < ids.length; i++) {
+                var it = byId[ids[i]];
+                var line = '   - ' + (it ? '[' + it.factory.name + '] ' + it.equip.name : '?') + ' | ID: ' + ids[i] + ' | الساعات: ' + (it ? (it.equip.hours || 0) : '?');
+                try {
+                    var map = await window.GMG.fetchAllByEquip('inspections', [ids[i]]);
+                    var list = (map && map[ids[i]]) || [];
+                    var latest = list.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); })[0];
+                    line += ' | فحوصات في السحابة: ' + list.length + (latest ? ' | آخر فحص: ' + String(latest.date).slice(0, 16).replace('T', ' ') : '');
+                } catch (e) {
+                    line += ' | خطأ قراءة: ' + (e && (e.code || e.message));
+                }
+                out.push(line);
+            }
+        } catch (e) {
+            out.push('• خطأ أثناء التشخيص: ' + (e && e.message));
+        }
+        return out.join('\n');
+    }
+
     async function queryGeminiApi(userPrompt) {
+        if (normAr(userPrompt).indexOf('تشخيص') === 0) {
+            return await runDiagnostics(String(userPrompt).replace(/تشخيص/, '').trim());
+        }
         var cfg = getModelAndKey();
         if ((!cfg.key && !cfg.proxy) || cfg.model === 'builtin') {
             return answerFreeExpertQuery(userPrompt);
