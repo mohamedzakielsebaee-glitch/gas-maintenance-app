@@ -7996,7 +7996,7 @@ window.gmgAi = (function () {
         lastMatchedIds.slice(0, 3).forEach(function (id) {
             var list = (hist[id] || []).slice().sort(function (a, b) {
                 return String(b.date).localeCompare(String(a.date));
-            }).slice(0, 10);
+            }).slice(0, 14);
             if (!list.length) return;
             var it = picked.find(function (p) { return p.equip.id === id; });
             histText += '• ' + (it ? '[' + it.factory.name + '] ' + it.equip.name : id) + ':\n' + list.map(function (r) {
@@ -8004,8 +8004,13 @@ window.gmgAi = (function () {
                 if (d.temp !== undefined && d.temp !== '') x.push('حرارة ' + d.temp + '°C');
                 if (d.press !== undefined && d.press !== '') x.push('ضغط ' + d.press + ' Bar');
                 if (d.vib !== undefined && d.vib !== '') x.push('اهتزاز ' + d.vib + ' mm/s');
+                if (d.status) x.push('حالة ' + d.status);
                 if (d.oil) x.push('زيت ' + d.oil);
-                return '   - ' + r.date + ': ' + (x.join(' • ') || 'بدون قراءات رقمية');
+                if (d.hum !== undefined && d.hum !== '') x.push('رطوبة ' + d.hum);
+                if (d.belts) x.push('سيور ' + d.belts);
+                if (d.sound) x.push('صوت ' + d.sound);
+                if (r.notes) x.push('ملاحظات: ' + String(r.notes).slice(0, 80));
+                return '   - ' + String(r.date).slice(0, 16).replace('T', ' ') + (r.userName ? ' (' + r.userName + ')' : '') + ': ' + (x.join(' • ') || 'بدون قراءات');
             }).join('\n') + '\n';
         });
 
@@ -8013,7 +8018,7 @@ window.gmgAi = (function () {
         var now = new Date().toLocaleString('ar-SA');
 
         return 'أنت المساعد الفني الذكي لمجموعة صيانة الغاز (GMG CMMS) في شركة الراجحي للحديد.\n' +
-            'المستخدم الحالي: ' + (u.name || 'فني') + ' (' + (u.role === 'admin' ? 'مشرف' : 'فني') + '). الوقت الآن: ' + now + '.\n\n' +
+            'المستخدم الحالي: ' + (u.name || 'فني') + ' (' + (u.role === 'admin' ? 'مشرف' : 'فني') + '). الوقت الآن: ' + now + ' (تاريخ اليوم ISO: ' + new Date().toISOString().slice(0, 10) + ').\n\n' +
             'قواعد الإجابة:\n' +
             '1. افهم العامية المصرية والخليجية والفصحى وأي صياغة طبيعية، ولا تشترط صيغة معينة للسؤال.\n' +
             '2. أجب على قدّ السؤال بالظبط وبدون حشو. التقرير الطويل فقط إذا طُلب تقرير أو تسليم وردية.\n' +
@@ -8032,6 +8037,35 @@ window.gmgAi = (function () {
             (wantsStock ? 'المخزن (الزيوت وقطع الغيار):\n' : 'نواقص المخزن:\n') + invText;
     }
 
+    // تحميل سجل الفحوصات من السحابة للمعدات المعنية بالسؤال فقط (بدل الاعتماد على تحميل مسبق قد لا يكتمل)
+    var inspFetchedAt = {};
+    async function refreshInspections(ids) {
+        if (!window.GMG || typeof window.GMG.fetchAllByEquip !== 'function' || !ids || !ids.length) return;
+        var now = Date.now();
+        var need = ids.filter(function (id) { return !inspFetchedAt[id] || now - inspFetchedAt[id] > 60000; });
+        if (!need.length) return;
+        try {
+            var map = await Promise.race([
+                window.GMG.fetchAllByEquip('inspections', need),
+                new Promise(function (_, rej) { setTimeout(function () { rej(new Error('inspections timeout')); }, 10000); })
+            ]);
+            need.forEach(function (id) { inspFetchedAt[id] = now; });
+            if (!appState.dailyInspections) appState.dailyInspections = {};
+            if (!appState.latestInspections) appState.latestInspections = {};
+            Object.keys(map || {}).forEach(function (eqId) {
+                var list = map[eqId] || [];
+                if (!list.length) return;
+                appState.dailyInspections[eqId] = list;
+                appState.latestInspections[eqId] = list.slice().sort(function (a, b) {
+                    return String(b.date).localeCompare(String(a.date));
+                })[0];
+            });
+            console.log('[GMG-AI] inspections loaded for', need.length, 'equipment; with data:', Object.keys(map || {}).length);
+        } catch (e) {
+            console.warn('[GMG-AI] could not refresh inspections:', e && e.message);
+        }
+    }
+
     async function queryGeminiApi(userPrompt) {
         var cfg = getModelAndKey();
         if ((!cfg.key && !cfg.proxy) || cfg.model === 'builtin') {
@@ -8039,6 +8073,12 @@ window.gmgAi = (function () {
         }
 
         var ctx = getLiveContext();
+        try {
+            var pre = pickRelevantEquipment(ctx, userPrompt);
+            var idsToLoad = lastMatchedIds.length ? lastMatchedIds.slice(0, 12) : pre.map(function (it) { return it.equip.id; }).slice(0, 12);
+            await refreshInspections(idsToLoad);
+            ctx = getLiveContext();   // إعادة البناء بعد وصول القراءات
+        } catch (e) { console.warn('[GMG-AI] context refresh failed:', e && e.message); }
         var contents = chatHistory.slice(-MAX_HISTORY_PAIRS * 2).map(function (m) {
             return { role: m.role, parts: [{ text: m.text }] };
         });
@@ -8053,7 +8093,7 @@ window.gmgAi = (function () {
         var FALLBACK_MODEL = 'gemini-3.5-flash-lite';
         var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
 
-        async function sendOnce(model) {
+        async function sendOnce(model, signal) {
             if (cfg.proxy) {
                 // الوضع الآمن: المفتاح على الخادم، والتطبيق يرسل توكن Firebase فقط
                 var idToken = '';
@@ -8061,31 +8101,51 @@ window.gmgAi = (function () {
                 return fetch(cfg.proxy, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
-                    body: JSON.stringify({ model: model, body: body })
+                    body: JSON.stringify({ model: model, body: body }),
+                    signal: signal
                 });
             }
             // الوضع المباشر (مؤقت): المفتاح من المتصفح
             return fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + cfg.key, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(body),
+                signal: signal
             });
         }
 
-        try {
-            // أخطاء مؤقتة من جوجل (ازدحام): نعيد المحاولة مرة، ثم ننتقل للنموذج الأخف
-            var models = [cfg.model];
-            if (cfg.model !== FALLBACK_MODEL) models.push(FALLBACK_MODEL);
-            var resp = null, usedModel = cfg.model;
-            for (var mi = 0; mi < models.length; mi++) {
-                usedModel = models[mi];
-                for (var attempt = 0; attempt < 2; attempt++) {
-                    resp = await sendOnce(usedModel);
-                    if (resp.ok || [500, 502, 503, 504].indexOf(resp.status) === -1) break;
-                    console.warn('Gemini temporary error', resp.status, usedModel, 'attempt', attempt + 1);
-                    if (attempt === 0) await sleep(1500);
+        // إرسال مع مهلة: لو تأخر الرد نعتبره 524 ونكمل للنموذج التالي بدل الانتظار الطويل
+        async function sendWithTimeout(model, ms) {
+            var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms) : null;
+            try {
+                return await sendOnce(model, ctl ? ctl.signal : undefined);
+            } catch (e) {
+                if (e && e.name === 'AbortError') {
+                    return { ok: false, status: 524, text: async function () { return 'timeout: النموذج تأخر في الرد'; } };
                 }
-                if (resp.ok || [500, 502, 503, 504].indexOf(resp.status) === -1) break;
+                throw e;
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        }
+
+        try {
+            // أخطاء مؤقتة: 5xx سريع -> نعيد المحاولة مرة. مهلة/524 -> ننتقل فوراً للنموذج الأخف.
+            var plan = [{ model: cfg.model, ms: 40000 }];
+            if (cfg.model !== FALLBACK_MODEL) plan.push({ model: FALLBACK_MODEL, ms: 30000 });
+            var resp = null;
+            for (var pi = 0; pi < plan.length; pi++) {
+                for (var attempt = 0; attempt < 2; attempt++) {
+                    resp = await sendWithTimeout(plan[pi].model, plan[pi].ms);
+                    if (resp.ok) break;
+                    console.warn('Gemini error', resp.status, plan[pi].model, 'attempt', attempt + 1);
+                    var fast5xx = [500, 502, 503, 504].indexOf(resp.status) !== -1;
+                    if (!(fast5xx && attempt === 0)) break;      // نعيد مرة واحدة فقط للأخطاء السريعة
+                    await sleep(1500);
+                }
+                var temporary = [500, 502, 503, 504, 524, 408].indexOf(resp.status) !== -1;
+                if (resp.ok || !temporary) break;
             }
 
             if (!resp.ok) {
@@ -8100,6 +8160,7 @@ window.gmgAi = (function () {
                 var hint = resp.status === 404 ? ' (اسم النموذج غير صالح أو متوقف — غيّره من إعدادات الذكاء الاصطناعي)' :
                            resp.status === 429 ? ' (تجاوزت الحد المجاني، حاول بعد قليل)' :
                            resp.status === 503 ? ' (خوادم جوجل مزدحمة حالياً، حاول بعد دقيقة)' :
+                           resp.status === 524 ? ' (انتهت مهلة الرد — النموذج بطيء أو مزدحم، جرّب Flash-Lite من الإعدادات)' :
                            resp.status === 403 && cfg.proxy ? ' (الخادم رفض موقع التطبيق — راجع ALLOWED_ORIGIN في Cloudflare)' :
                            resp.status === 401 && cfg.proxy ? ' (توكن Firebase مرفوض — راجع FIREBASE_PROJECT_ID في Cloudflare)' :
                            resp.status === 500 && cfg.proxy ? ' (متغير ناقص في Cloudflare، مثل GEMINI_API_KEY)' : '';
