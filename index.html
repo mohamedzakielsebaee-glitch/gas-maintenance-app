@@ -126,13 +126,6 @@
         }
     </script>
 
-    <script>
-    window.gmgNormModel = function (m) {
-        if (!m) return 'gemini-3.8-flash';
-        if (/^gemini-(1\.5|2\.0|2\.5)/.test(m)) return 'gemini-3.8-flash';
-        return m;
-    };
-    </script>
     <style>
         body { font-family: 'Cairo', 'Inter', sans-serif; background-color: #f1f5f9; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -584,15 +577,11 @@
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">النموذج الذكي (Gemini Model)</label>
                                     <select id="admin-gemini-model" class="w-full border rounded-xl px-3 py-2 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-cyan-500 outline-none font-bold text-slate-800">
-                                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (الموصى به، مجاني)</option>
-<option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (أخف وأسرع)</option>
-<option value="builtin">المحرك الخبير المدمج فقط (بدون Gemini)</option>
+                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (سريع، مجاني، مستقر)</option>
+                                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (الجيل الأحدث)</option>
+                                        <option value="builtin">المحرك الخبير المدمج فقط (بدون Gemini)</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1">رابط الخادم الآمن (Proxy URL) — اختياري، يُفضَّل استخدامه بدل المفتاح</label>
-                                <input type="text" id="admin-ai-proxy-url" dir="ltr" placeholder="https://...cloudfunctions.net/geminiProxy" class="w-full border rounded-xl px-3.5 py-2 text-xs sm:text-sm bg-white font-mono text-left focus:ring-2 focus:ring-cyan-500 outline-none">
                             </div>
                             
                             <div class="flex flex-wrap items-center justify-between gap-2.5 pt-1">
@@ -7173,9 +7162,9 @@
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">النموذج</label>
                     <select id="gmgGeminiModelSelect" class="w-full border rounded-xl px-3 py-2 text-xs bg-white dark:bg-slate-900">
-                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (الموصى به، مجاني)</option>
-<option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (أخف وأسرع)</option>
-<option value="builtin">المحرك الخبير المدمج فقط (بدون Gemini)</option>
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (سريع ومجاني)</option>
+                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (الجيل الأحدث)</option>
+                        <option value="builtin">المحرك الخبير المدمج فقط (Offline)</option>
                     </select>
                 </div>
             </div>
@@ -7201,8 +7190,8 @@
                     <div class="font-extrabold text-indigo-950 dark:text-indigo-300 flex items-center gap-2">
                         <span>أهلاً بك! أنا مساعد الصيانة الذكي لمجموعة صيانة الغاز (GMG AI).</span>
                     </div>
-                    <p>أنا متصل لحظياً بقاعدة بيانات المعدات، الفحوصات اليومية، سجلات ساعات التشغيل، بلاغات الأعطال، ومخزن الزيوت وقطع الغيار في المصانع الخمسة (Meltshop, HRMC, HRMD, CandB, FTP).</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">يمكنك كتابة أي سؤال أو اختيار أحد الإجراءات السريعة أدناه للتشخيص الفوري:</p>
+                    <p>اسألني بشكل طبيعي عن أي معدة، قراءة، عطل، أو رصيد في المخزن — وهجاوبك <b>على قد السؤال</b> فوراً.</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">وكمان تقدر تطلب مني تنفيذ أي مهمة في التطبيق مباشرة زي: <b>"افتح بلاغ طارئ على كمبرسور 3 مالت شوب"</b> أو <b>"افتح كتالوج كمبرسور 1"</b> أو <b>"افتح المخزن"</b> أو <b>"وديني مصنع HRMC"</b>.</p>
                 </div>
             </div>
         </div>
@@ -7237,7 +7226,7 @@
                     <i class="fas fa-microphone"></i>
                 </button>
                 <div class="flex-1 relative">
-                    <input type="text" id="gmgAiChatInput" autocomplete="off" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-cyan-500 outline-none pr-3 pl-10" placeholder="اسأل المساعد الذكي عن أي عطل، معدة، حرارة، ضغط، أو توصيات صيانة...">
+                    <input type="text" id="gmgAiChatInput" autocomplete="off" class="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-cyan-500 outline-none pr-3 pl-10" placeholder="اسألني أي سؤال أو اطلب مهمة (مثلاً: افتح بلاغ طارئ، افتح كتالوج كمبرسور 1، حرارة كمبرسور 3...)">
                     <span id="gmgAiTypingStatus" class="hidden absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-cyan-600 font-bold animate-pulse">
                         <i class="fas fa-spinner fa-spin"></i> جاري التحليل...
                     </span>
@@ -7256,6 +7245,10 @@ window.gmgAi = (function () {
 
     var isVoiceActive = false;
     var voiceRecognition = null;
+    var chatHistory = [];
+    var savedActions = [];
+    var lastMentionedEquipId = null;
+    var lastMentionedFactoryId = null;
 
     var esc = function (s) {
         if (typeof escapeHTML === 'function') return escapeHTML(s);
@@ -7264,9 +7257,22 @@ window.gmgAi = (function () {
         });
     };
 
+    function normalizeArabic(str) {
+        var q = String(str || '').toLowerCase().trim();
+        var map = {
+            'أ':'ا','إ':'ا','آ':'ا','ى':'ي','ة':'ه',
+            '١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','٠':'0',
+            'واحد':'1','اثنين':'2','اتنين':'2','تنين':'2','ثلاثة':'3','ثلاثه':'3','تلاتة':'3','تلاته':'3',
+            'اربعة':'4','اربعه':'4','خمسة':'5','خمسه':'5','ستة':'6','سته':'6','سبعة':'7','سبعه':'7',
+            'ثمانية':'8','تمانية':'8','تمانيه':'8','تسعة':'9','تسعه':'9'
+        };
+        Object.keys(map).forEach(function (k) { q = q.split(k).join(map[k]); });
+        return q;
+    }
+
     function getLiveContext() {
         var factories = (typeof appState !== 'undefined' && appState.factories) ? appState.factories : [];
-        if (!appState.latestInspections) {
+        if (typeof appState !== 'undefined' && !appState.latestInspections) {
             try {
                 appState.latestInspections = JSON.parse(localStorage.getItem('gmg_latest_inspections') || '{}');
             } catch (e) {
@@ -7343,6 +7349,7 @@ window.gmgAi = (function () {
 
         return {
             currentUser: (typeof appState !== 'undefined' && appState.currentUser) ? appState.currentUser : { name: 'فني الصيانة', role: 'tech' },
+            factories: factories,
             factoriesCount: factories.length,
             equipmentCount: allEquips.length,
             equipmentList: allEquips,
@@ -7368,20 +7375,414 @@ window.gmgAi = (function () {
         if (elPm) elPm.textContent = ctx.due4000.length;
         if (elInv) elInv.textContent = ctx.lowInventory.length;
 
-        var _c = getModelAndKey();
-        var key = _c.key || _c.proxy;
-        var model = _c.model;
+        var key = (typeof appState !== 'undefined' && appState.aiConfig && appState.aiConfig.apiKey) || '';
+        if (!key) { try { key = localStorage.getItem('gmg_gemini_key') || ''; } catch (e) {} }
+        var model = (typeof appState !== 'undefined' && appState.aiConfig && appState.aiConfig.model) || '';
+        if (!model) { try { model = localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash'; } catch (e) { model = 'gemini-1.5-flash'; } }
         var txt = document.getElementById('aiEngineStatusText');
         var badge = document.getElementById('aiEngineBadge');
         if (txt && badge) {
             if (key && model !== 'builtin') {
-                txt.textContent = model + (_c.proxy ? ' (آمن) • متصل' : ' • متصل');
+                txt.textContent = 'Gemini Flash (' + (model.indexOf('2.0') !== -1 ? '2.0' : '1.5') + ') • ذكاء تفاعلي';
                 badge.className = 'inline-flex items-center gap-1 text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full font-bold';
             } else {
-                txt.textContent = 'المحرك الخبير المدمج (مجاني 100%)';
+                txt.textContent = 'المحرك الذكي المدمج (مجاني + تنفيذ المهام)';
                 badge.className = 'inline-flex items-center gap-1 text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold';
             }
         }
+    }
+
+    /* ===================================================================
+       محرك تنفيذ مهام التطبيق (App Action Execution Engine)
+       =================================================================== */
+    function getActionMeta(action) {
+        if (!action || !action.type) return { label: 'تنفيذ المهمة', icon: 'fa-bolt', color: 'bg-cyan-600 text-white' };
+        var details = action.equipId && typeof getEquipmentDetails === 'function' ? getEquipmentDetails(action.equipId) : null;
+        var eqLabel = details ? details.equipment.name : '';
+        switch (action.type) {
+            case 'open_issue': return { label: eqLabel ? ('فتح بلاغ طارئ: ' + eqLabel) : 'فتح بلاغ طارئ سريع', icon: 'fa-triangle-exclamation', color: 'bg-red-600 hover:bg-red-700 text-white' };
+            case 'open_manual': return { label: eqLabel ? ('فتح كتالوج: ' + eqLabel) : 'فتح كتالوج المعدة', icon: 'fa-book-open', color: 'bg-indigo-600 hover:bg-indigo-700 text-white' };
+            case 'open_daily_inspection': return { label: eqLabel ? ('فحص يومي: ' + eqLabel) : 'تسجيل فحص يومي', icon: 'fa-clipboard-check', color: 'bg-emerald-600 hover:bg-emerald-700 text-white' };
+            case 'open_daily_center': return { label: 'فتح مركز الفحوصات اليومية', icon: 'fa-clipboard-list', color: 'bg-blue-700 hover:bg-blue-800 text-white' };
+            case 'open_pm': return { label: eqLabel ? ('بنود صيانة PM: ' + eqLabel) : 'بنود الصيانة الدورية', icon: 'fa-tools', color: 'bg-blue-600 hover:bg-blue-700 text-white' };
+            case 'open_hours': return { label: eqLabel ? ('الساعات و 4000h: ' + eqLabel) : 'إدارة ساعات التشغيل', icon: 'fa-clock', color: 'bg-amber-600 hover:bg-amber-700 text-white' };
+            case 'open_qr_hub': return { label: eqLabel ? ('مركز QR: ' + eqLabel) : 'مركز تحكم المعدة', icon: 'fa-qrcode', color: 'bg-amber-500 hover:bg-amber-600 text-slate-950' };
+            case 'open_qr_scanner': return { label: 'تشغيل ماسح QR', icon: 'fa-camera', color: 'bg-amber-500 hover:bg-amber-600 text-slate-950' };
+            case 'open_qr_list': return { label: 'دليل ملصقات QR', icon: 'fa-print', color: 'bg-slate-700 hover:bg-slate-800 text-white' };
+            case 'open_history': return { label: eqLabel ? ('السجل التاريخي: ' + eqLabel) : 'السجل التاريخي', icon: 'fa-clock-rotate-left', color: 'bg-slate-700 hover:bg-slate-800 text-white' };
+            case 'open_trend': return { label: eqLabel ? ('منحنى القراءات: ' + eqLabel) : 'منحنيات القراءات', icon: 'fa-chart-line', color: 'bg-indigo-600 hover:bg-indigo-700 text-white' };
+            case 'open_active_issues': return { label: 'عرض البلاغات النشطة', icon: 'fa-fire', color: 'bg-red-600 hover:bg-red-700 text-white' };
+            case 'open_due_maintenance': return { label: 'معدات تحتاج صيانة', icon: 'fa-screwdriver-wrench', color: 'bg-orange-600 hover:bg-orange-700 text-white' };
+            case 'open_inventory': return { label: 'فتح مخزن القطع والزيوت', icon: 'fa-boxes-stacked', color: 'bg-teal-600 hover:bg-teal-700 text-white' };
+            case 'open_reports': return { label: 'فتح التقارير وتحليل التوقف', icon: 'fa-chart-pie', color: 'bg-blue-700 hover:bg-blue-800 text-white' };
+            case 'open_monthly_pdf': return { label: 'فتح التقرير الشهري PDF', icon: 'fa-file-pdf', color: 'bg-indigo-700 hover:bg-indigo-800 text-white' };
+            case 'open_whatsapp': return { label: 'فتح جروب واتساب الصيانة', icon: 'fab fa-whatsapp', color: 'bg-emerald-600 hover:bg-emerald-700 text-white' };
+            case 'open_users': return { label: 'عرض المستخدمين المتصلين', icon: 'fa-users', color: 'bg-cyan-600 hover:bg-cyan-700 text-white' };
+            case 'open_factory': return { label: 'فتح مصنع ' + (action.factoryName || action.factoryId || ''), icon: 'fa-industry', color: 'bg-primary hover:bg-blue-800 text-white' };
+            case 'open_dashboard': return { label: 'العودة للرئيسية', icon: 'fa-home', color: 'bg-slate-800 hover:bg-black text-white' };
+            case 'open_admin': return { label: 'فتح لوحة تحكم المشرف', icon: 'fa-user-shield', color: 'bg-slate-900 hover:bg-black text-white' };
+            case 'toggle_dark': return { label: 'تبديل الوضع الليلي/النهاري', icon: 'fa-moon', color: 'bg-slate-800 hover:bg-black text-white' };
+            default: return { label: 'تنفيذ المهمة', icon: 'fa-bolt', color: 'bg-cyan-600 text-white' };
+        }
+    }
+
+    function executeAction(action) {
+        if (!action || !action.type) return false;
+        var closeAi = function () {
+            var modal = document.getElementById('gmgAiChatModal');
+            if (modal) modal.classList.add('hidden');
+        };
+        var details = action.equipId && typeof getEquipmentDetails === 'function' ? getEquipmentDetails(action.equipId) : null;
+
+        try {
+            switch (action.type) {
+                case 'open_issue':
+                    closeAi();
+                    if (details && typeof openReportIssue === 'function') {
+                        openReportIssue(details.equipment.id);
+                        if (action.desc) {
+                            setTimeout(function () {
+                                var dEl = document.getElementById('ri-desc');
+                                if (dEl) {
+                                    dEl.value = action.desc;
+                                    if (typeof updateReportIssueAdvice === 'function') updateReportIssueAdvice();
+                                }
+                            }, 80);
+                        }
+                    } else if (window.gmgPro && typeof gmgPro.openEmergency === 'function') {
+                        gmgPro.openEmergency();
+                        if (action.desc) {
+                            setTimeout(function () {
+                                var qd = document.getElementById('gmgQuickDesc');
+                                if (qd) qd.value = action.desc;
+                            }, 80);
+                        }
+                    }
+                    return true;
+                case 'open_manual':
+                    if (!details) return false;
+                    closeAi();
+                    if (typeof openEquipmentManual === 'function') openEquipmentManual(details.equipment.id);
+                    return true;
+                case 'open_daily_inspection':
+                    closeAi();
+                    if (details && typeof openDailyInspection === 'function') {
+                        openDailyInspection(details.equipment.id, action.newForm !== false);
+                    } else if (typeof openDailyInspectionCenter === 'function') {
+                        openDailyInspectionCenter();
+                    }
+                    return true;
+                case 'open_daily_center':
+                    closeAi();
+                    if (typeof openDailyInspectionCenter === 'function') openDailyInspectionCenter();
+                    return true;
+                case 'open_pm':
+                    if (!details) return false;
+                    closeAi();
+                    if (typeof openEquipPm === 'function') openEquipPm(details.equipment.id);
+                    return true;
+                case 'open_hours':
+                    if (!details) return false;
+                    closeAi();
+                    if (typeof openHoursManagement === 'function') openHoursManagement(details.equipment.id, details.equipment.name, details.equipment.hours);
+                    return true;
+                case 'open_qr_hub':
+                    if (!details) return false;
+                    closeAi();
+                    if (typeof openQrEquipmentHub === 'function') openQrEquipmentHub(details.equipment.id);
+                    return true;
+                case 'open_qr_scanner':
+                    closeAi();
+                    if (typeof openQrScannerModal === 'function') openQrScannerModal();
+                    return true;
+                case 'open_qr_list':
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.qrList === 'function') gmgPro.qrList();
+                    return true;
+                case 'open_history':
+                    if (!details) return false;
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.history === 'function') gmgPro.history(details.equipment.id);
+                    return true;
+                case 'open_trend':
+                    if (!details) return false;
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.trendChart === 'function') gmgPro.trendChart(details.equipment.id);
+                    return true;
+                case 'open_active_issues':
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.issues === 'function') gmgPro.issues();
+                    else if (typeof showActiveIssues === 'function') showActiveIssues();
+                    return true;
+                case 'open_due_maintenance':
+                    closeAi();
+                    if (typeof showMaintenanceDue === 'function') showMaintenanceDue();
+                    return true;
+                case 'open_inventory':
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.inventory === 'function') gmgPro.inventory();
+                    return true;
+                case 'open_reports':
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.reports === 'function') gmgPro.reports();
+                    return true;
+                case 'open_monthly_pdf':
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.monthlyPdfReport === 'function') gmgPro.monthlyPdfReport();
+                    return true;
+                case 'open_whatsapp':
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.whatsappHub === 'function') gmgPro.whatsappHub();
+                    return true;
+                case 'open_users':
+                    closeAi();
+                    if (window.gmgPro && typeof gmgPro.users === 'function') gmgPro.users();
+                    return true;
+                case 'open_factory':
+                    if (!action.factoryId) return false;
+                    closeAi();
+                    if (typeof showFactory === 'function') showFactory(action.factoryId);
+                    return true;
+                case 'open_dashboard':
+                    closeAi();
+                    if (typeof showDashboard === 'function') showDashboard();
+                    return true;
+                case 'open_admin':
+                    if (appState.currentUser && appState.currentUser.role === 'admin') {
+                        closeAi();
+                        if (typeof showAdminSettings === 'function') showAdminSettings();
+                        return true;
+                    } else {
+                        if (typeof showToast === 'function') showToast('لوحة تحكم المشرف متاحة للمشرفين والأدمن فقط', 'danger');
+                        return false;
+                    }
+                case 'toggle_dark':
+                    if (window.gmgPro && typeof gmgPro.dark === 'function') gmgPro.dark();
+                    return true;
+            }
+        } catch (err) {
+            console.error('gmgAi executeAction error:', err);
+        }
+        return false;
+    }
+
+    function detectFactoryInText(q) {
+        if (q.indexOf('مالت') !== -1 || q.indexOf('ملت') !== -1 || q.indexOf('صهر') !== -1 || q.indexOf('melt') !== -1) return { id: 'meltshop', name: 'Meltshop' };
+        if (q.indexOf('hrmc') !== -1 || q.indexOf('درفله c') !== -1 || q.indexOf('درفله سي') !== -1) return { id: 'hrmc', name: 'HRMC' };
+        if (q.indexOf('hrmd') !== -1 || q.indexOf('درفله d') !== -1 || q.indexOf('درفله دي') !== -1) return { id: 'hrmd', name: 'HRMD' };
+        if (q.indexOf('ftp') !== -1 || q.indexOf('اف تي') !== -1 || q.indexOf('غبار') !== -1 || q.indexOf('فلاتر') !== -1) return { id: 'ftp', name: 'FTP' };
+        if (q.indexOf('candb') !== -1 || q.indexOf('تقطيع') !== -1 || q.indexOf('ثني') !== -1 || q.indexOf('c&b') !== -1) return { id: 'candb', name: 'Cutting & Bending' };
+        return null;
+    }
+
+    function findMatchingEquipments(rawQuery, ctx) {
+        var q = normalizeArabic(rawQuery);
+        var fac = detectFactoryInText(q);
+        var targetFactoryId = fac ? fac.id : null;
+
+        var numMatch = q.match(/\b([1-9])\b/) || q.match(/(?:رقم|نمبر|no|#)\s*([1-9])/);
+        var targetNum = numMatch ? numMatch[1] : null;
+
+        var isCompressor = q.indexOf('كمبرسور') !== -1 || q.indexOf('كمبريسور') !== -1 || q.indexOf('ضاغط') !== -1 || q.indexOf('compressor') !== -1;
+        var isFan = q.indexOf('مروح') !== -1 || q.indexOf('شفاط') !== -1 || q.indexOf('fan') !== -1 || q.indexOf('سحب') !== -1;
+        var isDryer = q.indexOf('مجفف') !== -1 || q.indexOf('دراير') !== -1 || q.indexOf('dryer') !== -1;
+        var isPump = q.indexOf('طلمب') !== -1 || q.indexOf('مضخ') !== -1 || q.indexOf('pump') !== -1;
+        var isHeater = q.indexOf('سخان') !== -1 || q.indexOf('مسخن') !== -1 || q.indexOf('preheater') !== -1 || q.indexOf('بوتق') !== -1;
+        var isLpg = q.indexOf('lpg') !== -1 || q.indexOf('غاز') !== -1;
+        var isMac = q.indexOf('mac') !== -1 || q.indexOf('ماك') !== -1;
+        var isTurb = q.indexOf('توربين') !== -1 || q.indexOf('turbine') !== -1;
+
+        var scored = [];
+        for (var i = 0; i < ctx.equipmentList.length; i++) {
+            var item = ctx.equipmentList[i];
+            var eq = item.equip;
+            var eName = eq.name.toLowerCase();
+            var fId = item.factory.id;
+            var score = 0;
+
+            if (q.indexOf(eName) !== -1) score += 60;
+            if (q.indexOf(eq.id.toLowerCase()) !== -1) score += 60;
+            if (targetFactoryId && fId === targetFactoryId) score += 25;
+            else if (targetFactoryId && fId !== targetFactoryId) score -= 20;
+
+            if (targetNum && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) score += 20;
+            if (isCompressor && (eq.type === 'compressor' || eName.indexOf('compressor') !== -1)) score += 18;
+            if (isFan && (eq.type === 'fan' || eName.indexOf('fan') !== -1)) score += 18;
+            if (isDryer && (eq.type === 'dryer' || eName.indexOf('dryer') !== -1)) score += 18;
+            if (isPump && (eq.type === 'pump' || eName.indexOf('pump') !== -1)) score += 18;
+            if (isHeater && (eq.type === 'heater' || eName.indexOf('preheater') !== -1 || eName.indexOf('heating') !== -1)) score += 18;
+            if (isLpg && (eq.isLpgComp || eName.indexOf('lpg') !== -1)) score += 25;
+            if (isMac && eName.indexOf('mac') !== -1) score += 35;
+            if (isTurb && eName.indexOf('turbine') !== -1) score += 35;
+
+            if (score >= 30) scored.push({ item: item, score: score });
+        }
+
+        scored.sort(function (a, b) { return b.score - a.score; });
+        if (!scored.length) {
+            // Check pronoun follow-up ("بتاعه / عليها / لنفس المعدة")
+            var hasPronoun = /(بتاع|عليه|عليها|ليه|ليها|لها|نفس المعد|المعده دي|دي|ده|هنا)/.test(q);
+            if (hasPronoun && lastMentionedEquipId) {
+                var prev = ctx.equipmentList.find(function (x) { return x.equip.id === lastMentionedEquipId; });
+                if (prev) return [prev];
+            }
+            return [];
+        }
+        var topScore = scored[0].score;
+        return scored.filter(function (x) { return x.score >= topScore - 5; }).map(function (x) { return x.item; });
+    }
+
+    function detectActionIntent(rawQuery, ctx) {
+        var q = normalizeArabic(rawQuery);
+        var hasActionVerb = /(افتح|فتح|شغل|وديني|روح|اذهب|اعمل|سجل|سجلي|ابلغ|بلغ|قدم|هات|وريني|اعرض|طلع|اضف|ضيف|open|show|create|report|go to|switch|toggle)/.test(q);
+        var wantsIssue = /(بلاغ|عطل طارئ|بلغ عن|ابلغ عن|شكوي عطل|report issue|emergency)/.test(q);
+        var wantsManual = /(كتالوج|الكتالوج|دليل|مانوال|manual|catalog|pdf)/.test(q);
+        var wantsDaily = /(فحص يومي|الفحص اليومي|تسجيل فحص|قراءات اليوم|inspection)/.test(q);
+        var wantsPm = /(بنود الصيانه|صيانه دوريه|بنود pm|صيانه pm|open pm)/.test(q);
+        var wantsHours = /(اداره الساعات|تحديث الساعات|عدل الساعات|دوره 4000|4000 ساعه)/.test(q);
+        var wantsQrScan = /(امسح|مسح qr|ماسح qr|كاميرا qr|scan qr)/.test(q);
+        var wantsQrList = /(ملصقات qr|طباعه qr|دليل qr|qr list)/.test(q);
+        var wantsQrHub = /(مركز المعده|نافذه المعده|qr المعده|qr hub)/.test(q);
+        var wantsHistory = /(السجل التاريخي|تاريخ المعده|سجل المعده|history)/.test(q);
+        var wantsTrend = /(منحني|رسم بياني|ترند|chart|trend)/.test(q);
+        var wantsInventory = /(المخزن|مخزون|قطع الغيار|رصيد الزيوت|inventory|stock)/.test(q);
+        var wantsMonthlyPdf = /(تقرير شهري|تقرير الاداره|تقرير pdf|monthly pdf)/.test(q);
+        var wantsReports = /(التقارير|تحليل التوقف|داون تايم|downtime|reports)/.test(q);
+        var wantsWhatsapp = /(واتساب|واتس|جروب الصيانه|whatsapp)/.test(q);
+        var wantsUsers = /(المتصلين|المستخدمين النشطين|مين متصل|online users)/.test(q);
+        var wantsAdmin = /(لوحه المشرف|اعدادات المشرف|اداره المستخدمين|admin panel)/.test(q);
+        var wantsDashboard = /(الرئيسيه|لوحه التحكم|الصفحه الرئيسيه|dashboard|home)/.test(q);
+        var wantsDark = /(الوضع الليلي|الوضع النهاري|دارك مود|dark mode)/.test(q);
+        var wantsDueList = /(معدات تحتاج صيانه|الصيانه المستحقه|due maintenance)/.test(q);
+        var wantsActiveIssues = /(البلاغات النشطه|الاعطال المفتوحه|كل الاعطال|active issues)/.test(q);
+
+        var matches = findMatchingEquipments(rawQuery, ctx);
+        var targetEq = matches.length === 1 ? matches[0] : (matches.length > 1 ? matches[0] : null);
+        var fac = detectFactoryInText(q);
+
+        // Extract optional fault description after "بسبب" / "وصف" / "عشان" / "ان"
+        var extractedDesc = '';
+        var descMatch = String(rawQuery).match(/(?:بسبب|عشان|وصف|مشكلة|مشكله|العطل هو|ان فيه|فيها)\s+(.+)$/i);
+        if (descMatch && descMatch[1]) extractedDesc = descMatch[1].trim();
+
+        if (!hasActionVerb && !wantsIssue && !wantsManual && !wantsQrScan && !wantsDark) {
+            return null;
+        }
+
+        if (wantsIssue && (hasActionVerb || /(عايز اعمل|اعمل|سجل|افتح|بلغ|ابلغ)/.test(q))) {
+            if (targetEq) {
+                lastMentionedEquipId = targetEq.equip.id;
+                return {
+                    action: { type: 'open_issue', equipId: targetEq.equip.id, desc: extractedDesc },
+                    reply: 'تمام، فتحتلك نافذة **بلاغ عطل طارئ** لـ **' + targetEq.equip.name + ' (' + targetEq.factory.name + ')**' + (extractedDesc ? ' وجهزت وصف العطل تلقائياً.' : '.')
+                };
+            }
+            return {
+                action: { type: 'open_issue', desc: extractedDesc },
+                reply: 'تمام، فتحتلك نافذة **البلاغ الطارئ السريع** — اختر المعدة وأرسل البلاغ فوراً.'
+            };
+        }
+
+        if (wantsManual) {
+            if (targetEq) {
+                lastMentionedEquipId = targetEq.equip.id;
+                return {
+                    action: { type: 'open_manual', equipId: targetEq.equip.id },
+                    reply: 'حاضر، فتحتلك **كتالوج ' + targetEq.equip.name + ' (' + targetEq.factory.name + ')**.'
+                };
+            }
+            if (hasActionVerb) {
+                return {
+                    action: null,
+                    reply: 'حددلي اسم المعدة اللي عايز تفتح الكتالوج بتاعها (مثلاً: **افتح كتالوج كمبرسور 1 في مالت شوب**).'
+                };
+            }
+        }
+
+        if (wantsDaily && hasActionVerb) {
+            if (targetEq) {
+                lastMentionedEquipId = targetEq.equip.id;
+                return {
+                    action: { type: 'open_daily_inspection', equipId: targetEq.equip.id, newForm: true },
+                    reply: 'تمام، فتحتلك **الفحص اليومي** لـ **' + targetEq.equip.name + ' (' + targetEq.factory.name + ')**.'
+                };
+            }
+            return {
+                action: { type: 'open_daily_center' },
+                reply: 'تمام، فتحتلك **مركز الفحوصات اليومية لجميع المصانع**.'
+            };
+        }
+
+        if (wantsPm && hasActionVerb && targetEq) {
+            lastMentionedEquipId = targetEq.equip.id;
+            return {
+                action: { type: 'open_pm', equipId: targetEq.equip.id },
+                reply: 'حاضر، فتحتلك **بنود الصيانة الدورية (PM)** لـ **' + targetEq.equip.name + '**.'
+            };
+        }
+
+        if (wantsHours && hasActionVerb && targetEq) {
+            lastMentionedEquipId = targetEq.equip.id;
+            return {
+                action: { type: 'open_hours', equipId: targetEq.equip.id },
+                reply: 'تمام، فتحتلك **إدارة الساعات ودورة 4000h** لـ **' + targetEq.equip.name + '**.'
+            };
+        }
+
+        if (wantsQrScan) {
+            return { action: { type: 'open_qr_scanner' }, reply: 'تمام، شغلتلك **ماسح كود الـ QR** للمعدات.' };
+        }
+        if (wantsQrList && hasActionVerb) {
+            return { action: { type: 'open_qr_list' }, reply: 'حاضر، فتحتلك **دليل ملصقات الـ QR** للمعدات.' };
+        }
+        if (wantsQrHub && targetEq) {
+            lastMentionedEquipId = targetEq.equip.id;
+            return { action: { type: 'open_qr_hub', equipId: targetEq.equip.id }, reply: 'تمام، فتحتلك **مركز تحكم المعدة الشامل** لـ **' + targetEq.equip.name + '**.' };
+        }
+        if (wantsTrend && hasActionVerb && targetEq) {
+            lastMentionedEquipId = targetEq.equip.id;
+            return { action: { type: 'open_trend', equipId: targetEq.equip.id }, reply: 'تمام، فتحتلك **منحنيات القراءات البيانية** لـ **' + targetEq.equip.name + '**.' };
+        }
+        if (wantsHistory && hasActionVerb && targetEq) {
+            lastMentionedEquipId = targetEq.equip.id;
+            return { action: { type: 'open_history', equipId: targetEq.equip.id }, reply: 'حاضر، فتحتلك **السجل التاريخي الكامل** لـ **' + targetEq.equip.name + '**.' };
+        }
+        if (wantsMonthlyPdf && hasActionVerb) {
+            return { action: { type: 'open_monthly_pdf' }, reply: 'تمام، جهزتلك **التقرير الشهري للإدارة (PDF)**.' };
+        }
+        if (wantsInventory && hasActionVerb) {
+            return { action: { type: 'open_inventory' }, reply: 'حاضر، فتحتلك **مخزن قطع الغيار والزيوت**.' };
+        }
+        if (wantsReports && hasActionVerb) {
+            return { action: { type: 'open_reports' }, reply: 'تمام، فتحتلك **شاشة التقارير وتحليل أوقات التوقف**.' };
+        }
+        if (wantsWhatsapp && hasActionVerb) {
+            return { action: { type: 'open_whatsapp' }, reply: 'تمام، فتحتلك **جروب واتساب فريق الصيانة**.' };
+        }
+        if (wantsUsers && hasActionVerb) {
+            return { action: { type: 'open_users' }, reply: 'حاضر، فتحتلك **قائمة المستخدمين المتصلين الآن**.' };
+        }
+        if (wantsAdmin && hasActionVerb) {
+            return { action: { type: 'open_admin' }, reply: 'جاري فتح **لوحة تحكم المشرف**.' };
+        }
+        if (wantsDashboard && hasActionVerb) {
+            return { action: { type: 'open_dashboard' }, reply: 'تمام، رجعتك لـ **لوحة التحكم الرئيسية**.' };
+        }
+        if (wantsDark) {
+            return { action: { type: 'toggle_dark' }, reply: 'تم تبديل **الوضع الليلي / النهاري**.' };
+        }
+        if (wantsDueList && hasActionVerb) {
+            return { action: { type: 'open_due_maintenance' }, reply: 'تمام، فتحتلك قائمة **المعدات التي تحتاج صيانة**.' };
+        }
+        if (wantsActiveIssues && hasActionVerb) {
+            return { action: { type: 'open_active_issues' }, reply: 'حاضر، فتحتلك **لوحة البلاغات النشطة**.' };
+        }
+        if (fac && hasActionVerb && !targetEq) {
+            lastMentionedFactoryId = fac.id;
+            return { action: { type: 'open_factory', factoryId: fac.id, factoryName: fac.name }, reply: 'تمام، فتحتلك مصنع **' + fac.name + '**.' };
+        }
+
+        return null;
     }
 
     function runBuiltInDiagnostic(type) {
@@ -7391,140 +7792,80 @@ window.gmgAi = (function () {
 
         if (type === 'diagnostic') {
             var availPct = Math.max(0, Math.min(100, +(100 - (ctx.openAlerts.length / Math.max(1, ctx.equipmentCount)) * 100).toFixed(1)));
-            var res = '### 📊 تقرير الفحص والتشخيص الشامل لمنظومة صيانة الغاز (GMG)\n';
-            res += '**التاريخ:** ' + dateStr + ' | **المستخدم:** ' + ctx.currentUser.name + ' (' + (ctx.currentUser.role === 'admin' ? 'مشرف' : 'فني') + ')\n\n';
-            res += '#### 1. مؤشر الجاهزية العامة للشبكة:\n';
-            res += '- **نسبة الجاهزية التقديرية:** `' + availPct + '%`\n';
-            res += '- **إجمالي المعدات:** ' + ctx.equipmentCount + ' معدة عبر 5 مصانع.\n';
-            res += '- **البلاغات النشطة حالياً:** ' + ctx.openAlerts.length + ' عطل قيد المتابعة.\n';
-            res += '- **معدات استحقاق الـ 4000 ساعة:** ' + ctx.due4000.length + ' معدة مستحقة فوراً (' + ctx.soon4000.length + ' قريبة).\n';
-            res += '- **أصناف المخزن الحرجة:** ' + ctx.lowInventory.length + ' صنف وصل للحد الأدنى.\n\n';
-
+            var res = '### 📊 ملخص الفحص الشامل لمنظومة صيانة الغاز (GMG)\n';
+            res += '**التاريخ:** ' + dateStr + ' | **الجاهزية:** `' + availPct + '%`\n';
+            res += '- **المعدات:** ' + ctx.equipmentCount + ' معدة في 5 مصانع | **بلاغات نشطة:** ' + ctx.openAlerts.length + ' | **صيانة 4000h مستحقة:** ' + ctx.due4000.length + ' | **نواقص مخزن:** ' + ctx.lowInventory.length + '\n\n';
             if (ctx.openAlerts.length > 0) {
-                res += '#### 🚨 2. الأعطال النشطة التي تتطلب تدخلاً عاجلاً:\n';
+                res += '#### 🚨 الأعطال النشطة:\n';
                 ctx.openAlerts.forEach(function (a) {
-                    var dt = (typeof formatDowntime === 'function') ? formatDowntime(a.date, null).text : '';
-                    var adv = (typeof getEquipmentFaultAdvice === 'function') ? getEquipmentFaultAdvice(a.equipId, a.description) : null;
-                    res += '* **[' + esc(a.factoryName) + '] ' + esc(a.equipName) + ':**\n';
-                    res += '  - **العطل:** ' + esc(a.description) + '\n';
-                    res += '  - **زمن التوقف:** ' + dt + ' | **المكلف:** ' + esc(a.assignedTo || a.user || 'لم يُعيّن') + '\n';
-                    if (adv) {
-                        res += '  - **الزيت المقترح:** ' + esc(adv.oil) + '\n';
-                        res += '  - **قطع الغيار:** ' + esc(adv.parts) + '\n';
-                    }
-                });
-                res += '\n';
-            } else {
-                res += '#### ✅ 2. حالة الأعطال:\nلا توجد بلاغات نشطة مفتوحة حالياً. المنظومة تعمل بانتظام.\n\n';
-            }
-
-            if (ctx.anomalies.length > 0) {
-                res += '#### ⚠️ 3. إنذارات الحساسات والقراءات غير الطبيعية المسجلة:\n';
-                ctx.anomalies.forEach(function (an) {
-                    res += '* **' + esc(an.equipName) + ':** ' + an.issues.join(' • ') + ' *(بواسطة: ' + esc(an.user) + ')*\n';
+                    res += '* **[' + esc(a.factoryName) + '] ' + esc(a.equipName) + ':** ' + esc(a.description) + '\n';
                 });
                 res += '\n';
             }
-
             if (ctx.due4000.length > 0) {
-                res += '#### ⏱️ 4. صيانة الـ 4000 ساعة المستحقة (تغيير الزيوت والفلاتر):\n';
+                res += '#### ⏱️ صيانة الـ 4000 ساعة المستحقة:\n';
                 ctx.due4000.forEach(function (d) {
-                    res += '* **' + esc(d.factory.name) + ' - ' + esc(d.equip.name) + ':** ساعات التشغيل: `' + d.hours + ' HR` (المتبقي: ' + d.remaining + ' ساعة).\n';
+                    res += '* **' + esc(d.factory.name) + ' - ' + esc(d.equip.name) + ':** `' + d.hours + ' HR` (متبقي ' + d.remaining + 'h)\n';
                 });
                 res += '\n';
             }
-
             if (ctx.lowInventory.length > 0) {
-                res += '#### 🛢️ 5. تنبيهات مخزن الزيوت وقطع الغيار:\n';
+                res += '#### 🛢️ نواقص المخزن:\n';
                 ctx.lowInventory.forEach(function (it) {
-                    res += '* **' + esc(it.name) + ':** الرصيد الحالي: `' + it.qty + ' ' + (it.unit || '') + '` (الحد الأدنى: ' + it.minQty + ').\n';
+                    res += '* **' + esc(it.name) + ':** `' + it.qty + ' ' + (it.unit || '') + '` (الحد الأدنى: ' + it.minQty + ')\n';
                 });
-                res += '\n';
             }
-
-            res += '💡 **توصية المساعد الذكي:** البدء فوراً بإنهاء بلاغات الأعطال المفتوحة وتأمين طلبية الزيوت والفلاتر للأصناف التي بلغت الحد الأدنى.';
             return res;
         }
 
         if (type === 'active_issues') {
-            if (!ctx.openAlerts.length) return '✅ **لا توجد أعطال نشطة حالياً!** جميع معدات المصانع تعمل بكفاءة وبدون أي بلاغات معلقة.';
-            var resIssues = '### 🚨 تشخيص الأعطال النشطة وخطة العمل المقترحة:\n\n';
+            if (!ctx.openAlerts.length) return '✅ **لا توجد أعطال نشطة حالياً!** جميع المعدات تعمل بانتظام.';
+            var resIssues = '### 🚨 الأعطال النشطة حالياً (' + ctx.openAlerts.length + '):\n';
             ctx.openAlerts.forEach(function (a, idx) {
                 var dt = (typeof formatDowntime === 'function') ? formatDowntime(a.date, null).text : '';
-                var adv = (typeof getEquipmentFaultAdvice === 'function') ? getEquipmentFaultAdvice(a.equipId, a.description) : null;
-                resIssues += '#### ' + (idx + 1) + '. [' + esc(a.factoryName) + '] ' + esc(a.equipName) + '\n';
-                resIssues += '- **وصف البلاغ:** ' + esc(a.description) + '\n';
-                resIssues += '- **مدة التوقف حتى الآن:** ' + dt + '\n';
-                resIssues += '- **المسؤول / المشاركون:** ' + esc(a.assignedTo || a.user || 'قيد الانتظار') + '\n';
-                if (adv) {
-                    resIssues += '- **🛢️ نوع الزيت والشحم الموصى به:** ' + esc(adv.oil) + '\n';
-                    resIssues += '- **🔩 قطع الغيار المقترحة للفحص:** ' + esc(adv.parts) + '\n';
-                    if (adv.targetedTips && adv.targetedTips.length) {
-                        resIssues += '- **خطوات الإصلاح الفورية:**\n  * ' + adv.targetedTips.join('\n  * ') + '\n';
-                    }
-                }
-                resIssues += '\n';
+                resIssues += '**' + (idx + 1) + '. [' + esc(a.factoryName) + '] ' + esc(a.equipName) + ':** ' + esc(a.description) + ' *(توقف: ' + dt + ' | المسؤول: ' + esc(a.assignedTo || a.user || '-') + ')*\n';
             });
             return resIssues;
         }
 
         if (type === 'due_pm') {
-            if (!ctx.due4000.length && !ctx.soon4000.length) return '✅ **لا توجد معدات مستحقة لصيانة الـ 4000 ساعة حالياً.** جميع المعدات ضمن الدورات الطبيعية.';
-            var resPm = '### ⏱️ تحليل ومتابعة دورات الـ 4000 ساعة (تغيير الزيوت والفلاتر):\n\n';
+            if (!ctx.due4000.length && !ctx.soon4000.length) return '✅ **لا توجد معدات مستحقة لصيانة الـ 4000 ساعة حالياً.**';
+            var resPm = '### ⏱️ معدات دورة الـ 4000 ساعة:\n';
             if (ctx.due4000.length) {
-                resPm += '#### 🔴 معدات مستحقة الصيانة فوراً (تخطت أو على وشك بلوغ 4000h):\n';
+                resPm += '**🔴 مستحقة فوراً:**\n';
                 ctx.due4000.forEach(function (d) {
-                    var eq = d.equip;
-                    var isLpg = eq.isLpgComp || String(eq.name).toLowerCase().indexOf('lpg') !== -1;
-                    var oilType = isLpg ? 'LPG Synthetic ISO VG 150' : 'Screw Compressor Synthetic ISO VG 46 (Atlas/Boge/IR)';
-                    resPm += '* **[' + esc(d.factory.name) + '] ' + esc(eq.name) + ':**\n';
-                    resPm += '  - الساعات الحالية: `' + d.hours + ' HR` (المتبقي: ' + d.remaining + ' ساعة)\n';
-                    resPm += '  - باقة الصيانة المطلوبة: تغيير الزيت (' + oilType + ') + فلتر زيت + فلتر هواء + فاصل زيت (Separator) + فحص شد السيور وتنظيف السربنتينة.\n';
+                    resPm += '* **[' + esc(d.factory.name) + '] ' + esc(d.equip.name) + ':** `' + d.hours + ' HR` (متبقي ' + d.remaining + ' ساعة)\n';
                 });
-                resPm += '\n';
             }
             if (ctx.soon4000.length) {
-                resPm += '#### 🟡 معدات تقترب من الصيانة (خلال أقل من 600 ساعة):\n';
+                resPm += '**🟡 قريبة (أقل من 600 ساعة):**\n';
                 ctx.soon4000.forEach(function (d) {
-                    resPm += '* **[' + esc(d.factory.name) + '] ' + esc(d.equip.name) + ':** الساعات: `' + d.hours + ' HR` (المتبقي: ' + d.remaining + ' ساعة).\n';
+                    resPm += '* **[' + esc(d.factory.name) + '] ' + esc(d.equip.name) + ':** `' + d.hours + ' HR` (متبقي ' + d.remaining + ' ساعة)\n';
                 });
             }
             return resPm;
         }
 
         if (type === 'sensor_anomalies') {
-            if (!ctx.anomalies.length) return '✅ **جميع قراءات الفحص اليومي طبيعية!** لا توجد حرارة مرتفعة، ولا اهتزازات خطيرة، ولا هبوط ضغط في السجلات الأخيرة.';
-            var resSens = '### 🌡️ تقرير القراءات غير الطبيعية وتحليل الأسباب الهندسية:\n\n';
+            if (!ctx.anomalies.length) return '✅ **جميع قراءات الفحص اليومي طبيعية!** لا توجد إنذارات حرارة أو اهتزاز أو ضغط.';
+            var resSens = '### 🌡️ القراءات غير الطبيعية المسجلة:\n';
             ctx.anomalies.forEach(function (an, idx) {
-                resSens += '#### ' + (idx + 1) + '. ' + esc(an.equipName) + '\n';
-                resSens += '- **الملاحظات المسجلة:** ' + an.issues.join(' • ') + '\n';
-                resSens += '- **تاريخ الفحص:** ' + (an.date ? new Date(an.date).toLocaleString('ar-SA') : '-') + ' بواسطة: ' + esc(an.user) + '\n';
-                if (an.notes) resSens += '- **ملاحظة الفني:** ' + esc(an.notes) + '\n';
-                resSens += '- **التشخيص الهندسي المقترح:**\n';
-                an.issues.forEach(function (iss) {
-                    if (iss.indexOf('حرارة') !== -1) resSens += '  * *ارتفاع الحرارة:* افحص فوراً مستوى الزيت، نظافة مبرد السربنتينة، صمام الثرموستات (Thermostat Valve)، وحساس الحرارة.\n';
-                    if (iss.indexOf('اهتزاز') !== -1) resSens += '  * *الاهتزاز الزائد:* افحص رولمان البلي (Bearing Wear)، استقامة السيور والكوبلن، مسامير تثبيت القاعدة، واتزان ريش المراوح.\n';
-                    if (iss.indexOf('ضغط') !== -1) resSens += '  * *اختلال الضغط:* افحص بلف السحب (Unloader Valve)، فلتر الهواء، وحساس الضغط وسولونويد التحميل.\n';
-                    if (iss.indexOf('الزيت') !== -1) resSens += '  * *انخفاض الزيت:* تزويد الزيت بالنوع المعتمد فوراً وفحص أختام منع التسرب الميكانيكية (Mechanical Seal).\n';
-                    if (iss.indexOf('سيور') !== -1) resSens += '  * *السيور:* شد أو استبدال طقم السيور بالكامل لضمان نقل الحركة بدون انزلاق.\n';
-                });
-                resSens += '\n';
+                resSens += '**' + (idx + 1) + '. ' + esc(an.equipName) + ':** ' + an.issues.join(' • ') + ' *(بواسطة: ' + esc(an.user) + ')*\n';
             });
             return resSens;
         }
 
         if (type === 'oil_stock') {
-            var resOil = '### 🛢️ الموقف الشامل لمخزون الزيوت وقطع الغيار:\n\n';
+            var resOil = '### 🛢️ موقف مخزن الزيوت وقطع الغيار:\n';
             if (ctx.lowInventory.length) {
-                resOil += '#### ⚠️ أصناف وصلت إلى الحد الأدنى وتتطلب أمر شراء عاجل:\n';
+                resOil += '**⚠️ أصناف وصلت للحد الأدنى:**\n';
                 ctx.lowInventory.forEach(function (it) {
-                    resOil += '* **' + esc(it.name) + ':** الرصيد الحالي: `' + it.qty + ' ' + (it.unit || '') + '` (الحد الأدنى الآمن: ' + it.minQty + ')\n';
+                    resOil += '* **' + esc(it.name) + ':** `' + it.qty + ' ' + (it.unit || '') + '` (الأدنى: ' + it.minQty + ')\n';
                 });
                 resOil += '\n';
             } else {
-                resOil += '✅ **جميع أرصدة الزيوت والفلاتر في المخزن تتجاوز الحد الأدنى الآمن.**\n\n';
+                resOil += '✅ جميع الأرصدة فوق الحد الأدنى الآمن.\n\n';
             }
-            resOil += '#### 📦 جرد المخزن الحالي:\n';
             ctx.inventory.forEach(function (it) {
                 resOil += '* **' + esc(it.name) + ':** `' + it.qty + ' ' + (it.unit || '') + '`\n';
             });
@@ -7533,700 +7874,265 @@ window.gmgAi = (function () {
 
         if (type === 'shift_handover') {
             var openListStr = ctx.openAlerts.map(function (a) {
-                return '• [' + a.factoryName + '] ' + a.equipName + ': ' + a.description + ' (المسؤول: ' + (a.assignedTo || a.user || 'قيد المتابعة') + ')';
-            }).join('\n') || '• لا توجد أعطال مفتوحة حالياً.';
-
+                return '• [' + a.factoryName + '] ' + a.equipName + ': ' + a.description;
+            }).join('\n') || '• لا توجد أعطال مفتوحة.';
             var dueListStr = ctx.due4000.map(function (d) {
-                return '• [' + d.factory.name + '] ' + d.equip.name + ': بلغت ' + d.hours + ' ساعة (مطلوب صيانة 4000h)';
-            }).join('\n') || '• لا توجد معدات مستحقة للـ 4000h في هذه الوردية.';
-
-            var anomaliesStr = ctx.anomalies.map(function (an) {
-                return '• ' + an.equipName + ': ' + an.issues.join('، ');
-            }).join('\n') || '• جميع القراءات ضمن الحدود المعتادة.';
-
-            return '### 📝 محضر تقرير تسليم الوردية - مجموعة صيانة الغاز (GMG)\n' +
-                '**التاريخ والوقت:** ' + dateStr + '\n' +
-                '**المُسلِّم:** ' + ctx.currentUser.name + ' (فني الصيانة المسؤول)\n' +
-                '**الوردية:** وردية الصيانة الدورية والتشغيل\n\n' +
-                '---\n\n' +
-                '#### 1. الموقف التشغيلي العام:\n' +
-                '• جميع محطات الغاز والضواغط ومراوح السحب في المصانع الـ 5 تعمل وفق الخطة المقررة.\n' +
-                '• إجمالي البلاغات المفتوحة: **' + ctx.openAlerts.length + '**\n' +
-                '• إجمالي المعدات المستحقة للصيانة: **' + ctx.due4000.length + '**\n\n' +
-                '#### 2. البلاغات والأعطال المفتوحة قيد المتابعة:\n' +
-                openListStr + '\n\n' +
-                '#### 3. معدات دورة الـ 4000 ساعة الواجب متابعتها:\n' +
-                dueListStr + '\n\n' +
-                '#### 4. إنذارات الحساسات والقراءات الحرجة المسجلة:\n' +
-                anomaliesStr + '\n\n' +
-                '#### 5. توجيهات للوردية القادمة:\n' +
-                '1. استكمال أعمال الصيانة للبلاغات المفتوحة والتنسيق مع المشرف لإغلاقها.\n' +
-                '2. فحص درجات حرارة الضواغط ومستوى الزيوت في زجاجات البيان قبل بدء التشغيل المكثف.\n' +
-                '3. التأكد من سلامة خطوط سحب الهواء وفلاتر الفريون للمجففات ومصارف المياه (Auto Drain).\n\n' +
-                '**توقيع الفني المسلّم:** ' + ctx.currentUser.name + '\n' +
-                '**توقيع الفني المستلم:** ___________________';
+                return '• [' + d.factory.name + '] ' + d.equip.name + ': ' + d.hours + ' HR';
+            }).join('\n') || '• لا توجد معدات مستحقة حالياً.';
+            return '### 📝 تقرير تسليم الوردية - GMG\n' +
+                '**التاريخ:** ' + dateStr + ' | **المُسلِّم:** ' + ctx.currentUser.name + '\n\n' +
+                '**1. الأعطال المفتوحة (' + ctx.openAlerts.length + '):**\n' + openListStr + '\n\n' +
+                '**2. صيانة 4000h المستحقة (' + ctx.due4000.length + '):**\n' + dueListStr + '\n\n' +
+                '**توقيع المسلّم:** ' + ctx.currentUser.name + ' | **المستلم:** ___________';
         }
 
         return 'تم استلام الطلب.';
     }
 
-
-    function findTargetEquipment(query, equipmentList) {
-        var q = String(query || '').toLowerCase().trim();
-        var arabicNums = {'١':'1', '٢':'2', '٣':'3', '٤':'4', '٥':'5', '٦':'6', '٧':'7', '٨':'8', '٩':'9', 'واحد':'1', 'اثنين':'2', 'تنين':'2', 'ثلاثة':'3', 'تلاتة':'3', 'اربعة':'4', 'خمسة':'5', 'ستة':'6', 'سبعة':'7', 'ثمانية':'8', 'تسعة':'9'};
-        for (var k in arabicNums) {
-            q = q.split(k).join(arabicNums[k]);
-        }
-
-        var targetFactoryId = null;
-        if (q.indexOf('مالت') !== -1 || q.indexOf('صهر') !== -1 || q.indexOf('melt') !== -1) targetFactoryId = 'meltshop';
-        else if (q.indexOf('hrmc') !== -1 || q.indexOf('درفلة c') !== -1 || q.indexOf('درفلة سي') !== -1) targetFactoryId = 'hrmc';
-        else if (q.indexOf('hrmd') !== -1 || q.indexOf('درفلة d') !== -1 || q.indexOf('درفلة دي') !== -1) targetFactoryId = 'hrmd';
-        else if (q.indexOf('ftp') !== -1 || q.indexOf('اف تي') !== -1 || q.indexOf('غبار') !== -1 || q.indexOf('فلاتر') !== -1) targetFactoryId = 'ftp';
-        else if (q.indexOf('candb') !== -1 || q.indexOf('تقطيع') !== -1 || q.indexOf('ثني') !== -1 || q.indexOf('c&b') !== -1) targetFactoryId = 'candb';
-
-        var numMatch = q.match(/\b([1-9])\b/) || q.match(/(?:رقم|نمبر|no|#)\s*([1-9])/);
-        var targetNum = numMatch ? numMatch[1] : null;
-
-        var isCompressor = q.indexOf('كمبرسور') !== -1 || q.indexOf('كمبريسور') !== -1 || q.indexOf('ضاغط') !== -1 || q.indexOf('compressor') !== -1;
-        var isFan = q.indexOf('مروحة') !== -1 || q.indexOf('شفاط') !== -1 || q.indexOf('fan') !== -1 || q.indexOf('سحب') !== -1;
-        var isDryer = q.indexOf('مجفف') !== -1 || q.indexOf('دراير') !== -1 || q.indexOf('dryer') !== -1;
-        var isPump = q.indexOf('طلمبة') !== -1 || q.indexOf('مضخة') !== -1 || q.indexOf('pump') !== -1;
-        var isLpg = q.indexOf('lpg') !== -1 || q.indexOf('غاز') !== -1;
-
-        var bestItem = null;
-        var bestScore = -1;
-
-        for (var i = 0; i < equipmentList.length; i++) {
-            var item = equipmentList[i];
-            var eq = item.equip;
-            var eName = eq.name.toLowerCase();
-            var fId = item.factory.id;
-            var score = 0;
-
-            if (q.indexOf(eName) !== -1) score += 50;
-            if (targetFactoryId && fId === targetFactoryId) score += 20;
-            if (targetNum && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) score += 15;
-            if (isCompressor && (eq.type === 'compressor' || eName.indexOf('compressor') !== -1)) score += 15;
-            if (isFan && (eq.type === 'fan' || eName.indexOf('fan') !== -1)) score += 15;
-            if (isDryer && (eq.type === 'dryer' || eName.indexOf('dryer') !== -1)) score += 15;
-            if (isPump && (eq.type === 'pump' || eName.indexOf('pump') !== -1)) score += 15;
-            if (isLpg && (eq.isLpgComp || eName.indexOf('lpg') !== -1)) score += 20;
-
-            if (score > bestScore && score >= 30) {
-                bestScore = score;
-                bestItem = item;
-            }
-        }
-        return bestItem;
-    }
-
     function formatDirectEquipmentResponse(item, ctx) {
         var eq = item.equip;
         var f = item.factory;
-        var d = item.dept;
+        lastMentionedEquipId = eq.id;
+        lastMentionedFactoryId = f.id;
 
         var mStatus = (typeof calculateMaintenanceStatus === 'function')
             ? calculateMaintenanceStatus(eq.hours)
             : { remaining: 4000 - (eq.hours % 4000), statusText: 'حالة جيدة' };
 
-        var inspList = (ctx && ctx.inspections && ctx.inspections[eq.id]) || (appState.dailyInspections && appState.dailyInspections[eq.id]) || [];
-        var latestInsp = inspList.length ? inspList.slice().sort(function(a, b){ return String(b.date).localeCompare(String(a.date)); })[0] : null;
-
-        var readingText = 'لم يُسجل فحص اليوم بعد';
-        if (latestInsp && latestInsp.data) {
-            var idata = latestInsp.data;
-            var rParts = [];
-            if (idata.status) rParts.push('وضع التشغيل: ' + (idata.status === 'loading' ? 'تحميل (Loading)' : idata.status === 'unloading' ? 'تفريغ' : idata.status === 'running' ? 'يعمل' : idata.status === 'standby' ? 'استعداد' : 'إيقاف'));
-            if (idata.temp !== undefined && idata.temp !== '') rParts.push('الحرارة: ' + idata.temp + '°C');
-            if (idata.press !== undefined && idata.press !== '') rParts.push('الضغط: ' + idata.press + ' Bar');
-            if (idata.vib !== undefined && idata.vib !== '') rParts.push('الاهتزاز: ' + idata.vib + ' mm/s');
-            if (idata.oil) rParts.push('الزيت: ' + (idata.oil === 'normal' ? 'طبيعي' : 'منخفض'));
-            if (rParts.length) readingText = rParts.join(' • ');
-        }
+        var idata = item.latestData || {};
+        var rParts = [];
+        if (idata.temp !== undefined && idata.temp !== '') rParts.push('الحرارة: ' + idata.temp + '°C');
+        if (idata.press !== undefined && idata.press !== '') rParts.push('الضغط: ' + idata.press + ' Bar');
+        if (idata.vib !== undefined && idata.vib !== '') rParts.push('الاهتزاز: ' + idata.vib + ' mm/s');
+        var readingText = rParts.length ? rParts.join(' • ') : 'لم يُسجل فحص حديث';
 
         var openAlert = (ctx.openAlerts || []).find(function(a) { return a.equipId === eq.id; });
-        var alertText = openAlert
-            ? ('🚨 **يوجد بلاغ عطل نشط:** ' + openAlert.description + ' (المسؤول: ' + (openAlert.assignedTo || openAlert.user || 'قيد المتابعة') + ')')
-            : '✅ **الأعطال:** لا توجد بلاغات نشطة حالياً (المعدة تعمل بانتظام).';
-
-        var pendTasks = (typeof getPendingTasks === 'function') ? getPendingTasks(eq.id) : [];
-        var pmText = pendTasks.length
-            ? ('يوجد ' + pendTasks.length + ' بند صيانة معلق: ' + pendTasks.slice(0, 2).join('، '))
-            : 'بنود الصيانة الدورية منجزة بالكامل.';
-
-        var adv = (typeof getEquipmentFaultAdvice === 'function') ? getEquipmentFaultAdvice(eq.id, '') : null;
-        var oilText = (adv && adv.oil) ? adv.oil : 'راجع كتالوج المعدة';
-
-        // الرد على قد السؤال بدقة وإيجاز
-        var out = '### ⚙️ ' + eq.name + ' (' + f.name + ' - ' + d.name + ')\n';
-        out += '• **ساعات التشغيل:** `' + eq.hours + ' HR` — ' + mStatus.statusText + '\n';
-        out += '• **دورة الـ 4000 ساعة:** متبقي `' + mStatus.remaining + ' ساعة` على موعد تغيير الزيوت والفلاتر.\n';
-        out += '• **آخر قراءة فحص:** ' + readingText + '\n';
-        out += '• ' + alertText + '\n';
-        out += '• **الزيت المعتمد:** ' + oilText + '\n';
-        if (pendTasks.length) out += '• **الصيانة الدورية:** ' + pmText + '\n';
-        if (eq.manualUrl) out += '• **الكتالوج:** [فتح كتالوج PDF](' + eq.manualUrl + ')\n';
-
-        return out;
+        var out = '**⚙️ ' + eq.name + ' (' + f.name + '):**\n';
+        out += '• **الساعات:** `' + eq.hours + ' HR` (متبقي `' + mStatus.remaining + 'h` للـ 4000h)\n';
+        out += '• **آخر قراءة:** ' + readingText + '\n';
+        out += '• **الحالة:** ' + (openAlert ? ('🚨 عطل نشط: ' + openAlert.description) : '✅ تعمل بانتظام بدون أعطال');
+        return { text: out, equipId: eq.id };
     }
 
     function answerFreeExpertQuery(userQuery) {
         var rawQ = String(userQuery || '').trim();
-        var q = rawQ.toLowerCase();
+        var q = normalizeArabic(rawQ);
         var ctx = getLiveContext();
 
-        // تطبيع الأرقام العربية
-        var arabicNums = {'١':'1', '٢':'2', '٣':'3', '٤':'4', '٥':'5', '٦':'6', '٧':'7', '٨':'8', '٩':'9', 'واحد':'1', 'اثنين':'2', 'تنين':'2', 'ثلاثة':'3', 'تلاتة':'3', 'اربعة':'4', 'خمسة':'5', 'ستة':'6', 'سبعة':'7', 'ثمانية':'8', 'تسعة':'9'};
-        for (var k in arabicNums) { q = q.split(k).join(arabicNums[k]); }
-
-        var isTempQuery = q.indexOf('حرار') !== -1 || q.indexOf('سخون') !== -1 || q.indexOf('temp') !== -1 || q.indexOf('درجة') !== -1;
-        var isPressQuery = q.indexOf('ضغط') !== -1 || q.indexOf('بار') !== -1 || q.indexOf('press') !== -1 || q.indexOf('bar') !== -1;
-        var isVibQuery = q.indexOf('اهتزاز') !== -1 || q.indexOf('رجة') !== -1 || q.indexOf('صوت') !== -1 || q.indexOf('خبط') !== -1 || q.indexOf('vib') !== -1;
-        var isHoursQuery = q.indexOf('ساعات') !== -1 || q.indexOf('ساعة') !== -1 || q.indexOf('كام ساع') !== -1 || q.indexOf('hour') !== -1;
-        var isOilQuery = q.indexOf('زيت') !== -1 || q.indexOf('شحم') !== -1 || q.indexOf('oil') !== -1 || q.indexOf('نوع الزيت') !== -1;
-        var isFaultQuery = q.indexOf('عطل') !== -1 || q.indexOf('مشكل') !== -1 || q.indexOf('بلاغ') !== -1 || q.indexOf('واقف') !== -1 || q.indexOf('شغال') !== -1 || q.indexOf('issue') !== -1 || q.indexOf('fault') !== -1;
-
-        // البحث عن المعدات المطابقة
-        var matches = [];
-        var numMatch = q.match(/\b([1-9])\b/) || q.match(/(?:رقم|نمبر|no|#)\s*([1-9])/);
-        var targetNum = numMatch ? numMatch[1] : null;
-
-        var targetFactoryId = null;
-        if (q.indexOf('مالت') !== -1 || q.indexOf('صهر') !== -1 || q.indexOf('melt') !== -1) targetFactoryId = 'meltshop';
-        else if (q.indexOf('hrmc') !== -1 || q.indexOf('درفلة c') !== -1 || q.indexOf('درفلة سي') !== -1) targetFactoryId = 'hrmc';
-        else if (q.indexOf('hrmd') !== -1 || q.indexOf('درفلة d') !== -1 || q.indexOf('درفلة دي') !== -1) targetFactoryId = 'hrmd';
-        else if (q.indexOf('ftp') !== -1 || q.indexOf('اف تي') !== -1 || q.indexOf('غبار') !== -1 || q.indexOf('فلاتر') !== -1) targetFactoryId = 'ftp';
-        else if (q.indexOf('candb') !== -1 || q.indexOf('تقطيع') !== -1 || q.indexOf('ثني') !== -1 || q.indexOf('c&b') !== -1) targetFactoryId = 'candb';
-
-        var isCompressor = q.indexOf('كمبرسور') !== -1 || q.indexOf('كمبريسور') !== -1 || q.indexOf('ضاغط') !== -1 || q.indexOf('compressor') !== -1;
-        var isFan = q.indexOf('مروحة') !== -1 || q.indexOf('شفاط') !== -1 || q.indexOf('fan') !== -1 || q.indexOf('سحب') !== -1;
-        var isDryer = q.indexOf('مجفف') !== -1 || q.indexOf('دراير') !== -1 || q.indexOf('dryer') !== -1;
-        var isPump = q.indexOf('طلمبة') !== -1 || q.indexOf('مضخة') !== -1 || q.indexOf('pump') !== -1;
-
-        for (var i = 0; i < ctx.equipmentList.length; i++) {
-            var item = ctx.equipmentList[i];
-            var eq = item.equip;
-            var eName = eq.name.toLowerCase();
-            var fId = item.factory.id;
-
-            var match = false;
-            if (targetFactoryId) {
-                if (fId === targetFactoryId) {
-                    if (targetNum) {
-                        if (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1) match = true;
-                    } else if (isCompressor && (eq.type === 'compressor' || eName.indexOf('compressor') !== -1)) {
-                        match = true;
-                    } else if (isFan && (eq.type === 'fan' || eName.indexOf('fan') !== -1)) {
-                        match = true;
-                    } else if (isPump && (eq.type === 'pump' || eName.indexOf('pump') !== -1)) {
-                        match = true;
-                    } else if (isDryer && (eq.type === 'dryer' || eName.indexOf('dryer') !== -1)) {
-                        match = true;
-                    } else if (q.indexOf(eName) !== -1) {
-                        match = true;
-                    }
-                }
-            } else {
-                if (targetNum) {
-                    if (isCompressor && (eq.type === 'compressor' || eName.indexOf('compressor') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
-                        match = true;
-                    } else if (isFan && (eq.type === 'fan' || eName.indexOf('fan') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
-                        match = true;
-                    } else if (isDryer && (eq.type === 'dryer' || eName.indexOf('dryer') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
-                        match = true;
-                    } else if (isPump && (eq.type === 'pump' || eName.indexOf('pump') !== -1) && (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1)) {
-                        match = true;
-                    } else if (eName.indexOf(targetNum) !== -1 || eq.id.indexOf(targetNum) !== -1) {
-                        match = true;
-                    }
-                } else if (q.indexOf(eName) !== -1) {
-                    match = true;
-                }
-            }
-            if (match) matches.push(item);
+        // 1. Check explicit action commands first!
+        var intent = detectActionIntent(rawQ, ctx);
+        if (intent) {
+            return { text: intent.reply, action: intent.action, autoRun: !!intent.action };
         }
 
-        // إذا سأل عن درجة الحرارة بالذات
-        if (isTempQuery && matches.length > 0) {
-            if (matches.length === 1) {
-                var m1 = matches[0];
-                var t1 = (m1.latestData && m1.latestData.temp !== undefined && m1.latestData.temp !== '') ? (m1.latestData.temp + '°C') : 'غير مسجلة بعد';
-                var s1 = (m1.latestData && m1.latestData.status) ? ('وضع: ' + m1.latestData.status) : '';
-                var isHot = parseFloat(m1.latestData && m1.latestData.temp) >= 95;
-                var note1 = isHot ? '⚠️ (تنبيه: حرارة مرتفعة عن الحد المسموح 95°C)' : '✅ (حرارة طبيعية ومستقرة)';
-                return '🌡️ **درجة حرارة ' + m1.equip.name + ' في مصنع ' + m1.factory.name + ':**\n' +
-                       '• القراءة الحالية: **' + t1 + '** ' + (s1 ? '(' + s1 + ') ' : '') + note1 + '\n' +
-                       '• الحد الأقصى الآمن للتشغيل: 95°C (ويفصل أوتوماتيكياً عند 105°C-110°C).';
-            } else {
-                var resList = '🌡️ **درجات الحرارة المسجلة لـ (كمبرسور رقم ' + (targetNum || '') + ') في المصانع:**\n';
-                matches.forEach(function(m) {
-                    var tVal = (m.latestData && m.latestData.temp !== undefined && m.latestData.temp !== '') ? (m.latestData.temp + '°C') : 'لم تُسجل قراءة اليوم';
-                    var isH = parseFloat(m.latestData && m.latestData.temp) >= 95;
-                    resList += '• **[' + m.factory.name + '] ' + m.equip.name + ':** ' + tVal + (isH ? ' ⚠️ (مرتفعة)' : ' ✅ (طبيعية)') + '\n';
-                });
-                return resList;
-            }
+        // 2. Natural greetings & capability questions
+        if (/^(اهلا|مرحبا|السلام عليكم|سلام عليكم|صباح الخير|مساء الخير|ازيك|عامل ايه|هاي|hello|hi)\b/.test(q)) {
+            return { text: 'أهلاً بك يا **' + esc(ctx.currentUser.name || 'بطل') + '**! تحت أمرك — اسألني عن أي معدة أو قراءة أو عطل، أو قولي أفتحلك أي مهمة في التطبيق (بلاغ طارئ، كتالوج، فحص يومي، مخزن...).' };
+        }
+        if (/(بتعمل ايه|تقدر تعمل ايه|مين انت|ساعدني|help)/.test(q)) {
+            return { text: 'أقدر أجاوبك **على قد السؤال** عن أي معدة أو قراءة أو عطل أو مخزن في التطبيق، وكمان أنفذلك أي مهمة فوراً زي:\n• **"افتح بلاغ طارئ على كمبرسور 3 مالت شوب"**\n• **"افتح كتالوج كمبرسور 1"**\n• **"درجة حرارة كمبرسور 5 كام؟"**\n• **"افتح المخزن"** أو **"افتح الفحص اليومي"**' };
         }
 
-        // إذا سأل عن الضغط بالذات
-        if (isPressQuery && matches.length > 0) {
-            var mP = matches[0];
-            var pVal = (mP.latestData && mP.latestData.press !== undefined && mP.latestData.press !== '') ? (mP.latestData.press + ' Bar') : 'لم يُسجل فحص اليوم';
-            var pMode = (mP.latestData && mP.latestData.status) ? (' (وضع: ' + mP.latestData.status + ')') : '';
-            return '📊 **ضغط تشغيل ' + mP.equip.name + ' في ' + mP.factory.name + ':**\n' +
-                   '• القراءة: **' + pVal + '**' + pMode + ' (نطاق الضغط المعتاد: 6.5 إلى 8.5 Bar).';
-        }
+        // 3. Equipment-specific concise answers ("على قد السؤال")
+        var matches = findMatchingEquipments(rawQ, ctx);
+        var isTempQuery = q.indexOf('حرار') !== -1 || q.indexOf('سخون') !== -1 || q.indexOf('temp') !== -1;
+        var isPressQuery = q.indexOf('ضغط') !== -1 || q.indexOf('بار') !== -1 || q.indexOf('press') !== -1;
+        var isVibQuery = q.indexOf('اهتزاز') !== -1 || q.indexOf('رج') !== -1 || q.indexOf('صوت') !== -1 || q.indexOf('vib') !== -1;
+        var isHoursQuery = q.indexOf('ساعات') !== -1 || q.indexOf('ساع') !== -1 || q.indexOf('hour') !== -1;
+        var isOilQuery = q.indexOf('زيت') !== -1 || q.indexOf('شحم') !== -1 || q.indexOf('oil') !== -1;
+        var isFaultQuery = q.indexOf('عطل') !== -1 || q.indexOf('مشكل') !== -1 || q.indexOf('بلاغ') !== -1 || q.indexOf('شغال') !== -1 || q.indexOf('واقف') !== -1;
 
-        // إذا سأل عن الاهتزاز أو الصوت
-        if (isVibQuery && matches.length > 0) {
-            var mV = matches[0];
-            var vVal = (mV.latestData && mV.latestData.vib !== undefined && mV.latestData.vib !== '') ? (mV.latestData.vib + ' mm/s') : 'لم يُسجل فحص';
-            var sVal = (mV.latestData && mV.latestData.sound) ? mV.latestData.sound : 'طبيعي';
-            return '🔊 **بيانات الاهتزاز والأصوات لـ ' + mV.equip.name + ' (' + mV.factory.name + '):**\n' +
-                   '• مستوى الاهتزاز: **' + vVal + '** (الحد المسموح أقل من 4.5 mm/s)\n' +
-                   '• حالة الصوت: **' + sVal + '**';
-        }
-
-        // إذا سأل عن الساعات
-        if (isHoursQuery && matches.length > 0) {
-            var mH = matches[0];
-            var remH = 4000 - (Number(mH.equip.hours || 0) % 4000);
-            return '⏱️ **ساعات تشغيل ' + mH.equip.name + ' (' + mH.factory.name + '):**\n' +
-                   '• الساعات الحالية: **' + mH.equip.hours + ' HR**\n' +
-                   '• المتبقي على صيانة دورة 4000 ساعة: **' + remH + ' ساعة**';
-        }
-
-        // إذا سأل عن الزيت
-        if (isOilQuery && matches.length > 0) {
-            var mO = matches[0];
-            var advO = (typeof getEquipmentFaultAdvice === 'function') ? getEquipmentFaultAdvice(mO.equip.id, '') : null;
-            var oilL = (mO.latestData && mO.latestData.oil) ? (mO.latestData.oil === 'normal' ? 'طبيعي' : 'منخفض') : 'غير محدد';
-            return '🛢️ **مواصفات الزيت لـ ' + mO.equip.name + ' (' + mO.factory.name + '):**\n' +
-                   '• نوع الزيت المعتمد: **' + (advO && advO.oil ? advO.oil : 'راجع الكتالوج') + '**\n' +
-                   '• مستوى الزيت في آخر فحص: **' + oilL + '**';
-        }
-
-        // إذا سأل عن الأعطال
-        if (isFaultQuery && matches.length > 0) {
-            var mF = matches[0];
-            var opF = (ctx.openAlerts || []).find(function(a) { return a.equipId === mF.equip.id; });
-            if (opF) {
-                return '🚨 **يوجد بلاغ عطل نشط على ' + mF.equip.name + ' (' + mF.factory.name + '):**\n' +
-                       '• الوصف: ' + opF.description + '\n' +
-                       '• المسؤول: ' + (opF.assignedTo || opF.user || 'قيد المتابعة');
-            } else {
-                return '✅ **' + mF.equip.name + ' في مصنع ' + mF.factory.name + ' تعمل بانتظام ولا يوجد عليها أي أعطال نشطة حالياً.**';
-            }
-        }
-
-        // إذا كان السؤال عام عن المعدة
         if (matches.length > 0) {
+            if (matches.length === 1) lastMentionedEquipId = matches[0].equip.id;
+
+            if (isTempQuery) {
+                if (matches.length === 1) {
+                    var m1 = matches[0];
+                    var t1 = (m1.latestData && m1.latestData.temp !== undefined && m1.latestData.temp !== '') ? (m1.latestData.temp + '°C') : 'غير مسجلة بعد';
+                    var isHot = parseFloat(m1.latestData && m1.latestData.temp) >= 95;
+                    return { text: '🌡️ حرارة **' + m1.equip.name + ' (' + m1.factory.name + '):** `' + t1 + '` ' + (t1 === 'غير مسجلة بعد' ? '' : (isHot ? '⚠️ (مرتفعة عن 95°C)' : '✅ (طبيعية)')), equipId: m1.equip.id };
+                }
+                var resT = '🌡️ **درجات الحرارة المسجلة:**\n' + matches.map(function (m) {
+                    var tv = (m.latestData && m.latestData.temp !== undefined && m.latestData.temp !== '') ? (m.latestData.temp + '°C') : 'غير مسجلة';
+                    return '• **[' + m.factory.name + '] ' + m.equip.name + ':** `' + tv + '`';
+                }).join('\n');
+                return { text: resT };
+            }
+
+            if (isPressQuery) {
+                var mP = matches[0];
+                var pVal = (mP.latestData && mP.latestData.press !== undefined && mP.latestData.press !== '') ? (mP.latestData.press + ' Bar') : 'غير مسجل';
+                return { text: '📊 ضغط **' + mP.equip.name + ' (' + mP.factory.name + '):** `' + pVal + '`', equipId: mP.equip.id };
+            }
+
+            if (isVibQuery) {
+                var mV = matches[0];
+                var vVal = (mV.latestData && mV.latestData.vib !== undefined && mV.latestData.vib !== '') ? (mV.latestData.vib + ' mm/s') : 'غير مسجل';
+                return { text: '🔊 اهتزاز **' + mV.equip.name + ' (' + mV.factory.name + '):** `' + vVal + '` | الصوت: `' + (mV.latestData.sound || 'طبيعي') + '`', equipId: mV.equip.id };
+            }
+
+            if (isHoursQuery) {
+                var mH = matches[0];
+                var remH = 4000 - (Number(mH.equip.hours || 0) % 4000);
+                return { text: '⏱️ **' + mH.equip.name + ' (' + mH.factory.name + '):** الساعات الحالية `' + mH.equip.hours + ' HR` — المتبقي للـ 4000h: `' + remH + ' ساعة`.', equipId: mH.equip.id };
+            }
+
+            if (isOilQuery) {
+                var mO = matches[0];
+                var advO = (typeof getEquipmentFaultAdvice === 'function') ? getEquipmentFaultAdvice(mO.equip.id, '') : null;
+                return { text: '🛢️ زيت **' + mO.equip.name + ' (' + mO.factory.name + '):** ' + (advO && advO.oil ? advO.oil : 'راجع الكتالوج'), equipId: mO.equip.id };
+            }
+
+            if (isFaultQuery) {
+                var mF = matches[0];
+                var opF = (ctx.openAlerts || []).find(function (a) { return a.equipId === mF.equip.id; });
+                return {
+                    text: opF ? ('🚨 يوجد عطل نشط على **' + mF.equip.name + '**: ' + opF.description) : ('✅ **' + mF.equip.name + ' (' + mF.factory.name + ')** تعمل بانتظام بدون أعطال نشطة.'),
+                    equipId: mF.equip.id
+                };
+            }
+
             return formatDirectEquipmentResponse(matches[0], ctx);
         }
 
-        if (q.indexOf('حرار') !== -1 || q.indexOf('سخون') !== -1 || q.indexOf('temp') !== -1 || q.indexOf('overheat') !== -1) {
-            return '### 🔥 دليل تشخيص ومعالجة ارتفاع درجات الحرارة في الضواغط والمعدات:\n' +
-                '1. **مستوى الزيت وجودته:** تأكد من أن مستوى الزيت في منتصف زجاجة البيان أثناء التحميل، وعدم تأكسد أو اسوداد الزيت.\n' +
-                '2. **سربنتينة التبريد (Oil Cooler & Aftercooler):** تنظيف زعانف السربنتينة بالهواء المضغوط أو بالمواد المذيبة للدهون لإزالة الأتربة المتراكمة.\n' +
-                '3. **بلف الثرموستات (Thermostatic Valve):** فحص فتح البلف عند الدرجة المحددة (غالباً 71°C أو 80°C) للسماح بتدفق الزيت للمبرد.\n' +
-                '4. **مروحة التبريد ومسار التهوية:** التأكد من كفاءة مروحة التبريد وعدم انسداد فتحات دخول وخروج الهواء من غرفة الضواغط.\n' +
-                '5. **ضغط فاصل الزيت (Oil Separator ΔP):** انسداد فاصل الزيت يسبب إجهاداً حرارياً هائلاً على رأس الضاغط.';
+        // 4. App-wide concise queries
+        if (/(مين متصل|المتصلين|المستخدمين النشطين|كام واحد فاتح)/.test(q)) {
+            var names = ctx.onlineUsers.map(function (u) { return u.name; }).join('، ') || ctx.currentUser.name;
+            return { text: '👥 المتصلون الآن (**' + Math.max(1, ctx.onlineUsers.length) + '**): ' + names, action: { type: 'open_users' }, autoRun: false };
+        }
+        if (/(كام معده|عدد المعدات|كام مصنع)/.test(q)) {
+            return { text: '🏭 يوجد **' + ctx.factoriesCount + ' مصانع** بإجمالي **' + ctx.equipmentCount + ' معدة** مسجلة في التطبيق.' };
+        }
+        if (/(نواقص|المخزن|مخزون|رصيد الزيت|قطع الغيار)/.test(q)) {
+            return { text: runBuiltInDiagnostic('oil_stock'), action: { type: 'open_inventory' }, autoRun: false };
+        }
+        if (/(عطل|بلاغ|اعطال|مشاكل مفتوحه)/.test(q)) {
+            return { text: runBuiltInDiagnostic('active_issues'), action: { type: 'open_active_issues' }, autoRun: false };
+        }
+        if (/(4000|صيانه مستحقه|معدات تحتاج صيانه)/.test(q)) {
+            return { text: runBuiltInDiagnostic('due_pm'), action: { type: 'open_due_maintenance' }, autoRun: false };
+        }
+        if (/(ورديه|تسليم)/.test(q)) {
+            return { text: runBuiltInDiagnostic('shift_handover') };
+        }
+        if (/(فحص شامل|تقرير شامل|حاله المصانع|ملخص)/.test(q)) {
+            return { text: runBuiltInDiagnostic('diagnostic') };
+        }
+        if (isTempQuery) {
+            return { text: '🔥 أسباب ارتفاع الحرارة الأساسية في الضواغط: **1)** نقص أو تأكسد الزيت **2)** اتساخ مبرد الزيت (Cooler) **3)** تلف بلف الثرموستات **4)** انسداد فاصل الزيت (Separator). لو عايز تفحص معدة معينة قولي اسمها.' };
+        }
+        if (isVibQuery) {
+            return { text: '🔊 أسباب الاهتزاز/الصوت الشائعة: **1)** تلف رولمان البلي (Bearings) **2)** ارتخاء أو عدم استقامة السيور **3)** عدم اتزان ريش المروحة **4)** ارتخاء مسامير القاعدة أو كاوتشة الكوبلن.' };
+        }
+        if (q.indexOf('lox') !== -1 || q.indexOf('اكسجين') !== -1) {
+            return { text: '⚠️ **سلامة الأكسجين (LOX):** يُمنع تماماً أي زيت أو شحم بترولي (خطر اشتعال فوري). استخدم فقط شحم متوافق مع الأكسجين (**PFPE / Krytox**) وتأكد من التبريد المسبق قبل التشغيل.' };
         }
 
-        if (q.indexOf('اهتزاز') !== -1 || q.indexOf('رجة') !== -1 || q.indexOf('صوت') !== -1 || q.indexOf('خبط') !== -1 || q.indexOf('vib') !== -1 || q.indexOf('bearing') !== -1) {
-            return '### 🔊 دليل تشخيص الاهتزاز والأصوات غير الطبيعية في المراوح والضواغط:\n' +
-                '1. **رولمان البلي (Bearings):** استخدام جهاز قياس الاهتزازات (Vibrameter) وكاشف الترددات، والتأكد من التشحيم المنتظم بشحم حراري معتمد (SKF LGHP 2).\n' +
-                '2. **اتزان الريش (Dynamic Balance):** تراكم الأتربة على ريش مراوح السحب (Suction Fans) يسبب اختلال اتزان ديناميكي عنيف يتطلب غسيل الريش وإعادة ضبط الاتزان.\n' +
-                '3. **السيور والطنابير (V-Belts & Pulleys):** فحص استقامة الطنابير بالليزر (Alignment)، وضبط شد السيور (السيور المرتخية تضرب في الغطاء والسيور المشدودة أكثر من اللازم تدمر رولمان البلي).\n' +
-                '4. **مسامير القواعد وكاوتشات الكوبلن:** مراجعة ربط مسامير التثبيت (Anchor Bolts) وحالة كاوتشة الكوبلن المطاطية لمنع انتقال الرجة.';
-        }
-
-        if (q.indexOf('زيت') !== -1 || q.indexOf('شحم') !== -1 || q.indexOf('oil') !== -1 || q.indexOf('grease') !== -1) {
-            return runBuiltInDiagnostic('oil_stock');
-        }
-
-        if (q.indexOf('وردية') !== -1 || q.indexOf('تسليم') !== -1 || q.indexOf('handover') !== -1 || q.indexOf('تقرير') !== -1) {
-            return runBuiltInDiagnostic('shift_handover');
-        }
-
-        if (q.indexOf('عطل') !== -1 || q.indexOf('بلاغ') !== -1 || q.indexOf('طارئ') !== -1 || q.indexOf('issue') !== -1 || q.indexOf('alert') !== -1) {
-            return runBuiltInDiagnostic('active_issues');
-        }
-
-        if (q.indexOf('4000') !== -1 || q.indexOf('ساعات') !== -1 || q.indexOf('دورات') !== -1 || q.indexOf('pm') !== -1) {
-            return runBuiltInDiagnostic('due_pm');
-        }
-
-        if (q.indexOf('lox') !== -1 || q.indexOf('lin') !== -1 || q.indexOf('أكسجين') !== -1 || q.indexOf('اوكسجين') !== -1) {
-            return '### ⚠️ تعليمات السلامة الحرجة لطلمبات ومعدات الأكسجين السائل (LOX):\n' +
-                '1. **منع استخدام الزيوت البترولية نهائياً:** يمنع منعاً باتاً ملامسة أي زيت بترولي أو شحم عادي للأجزاء المعرضة للأكسجين (خطر الاشتعال الذاتي الفوري).\n' +
-                '2. **شحوم معتمدة فقط:** يُستخدم فقط شحم الفلوروبوليمر الخامل (PFPE / Krytox Oxygen-Safe Grease).\n' +
-                '3. **التبريد المسبق (Cool-down):** تبريد الطلمبة ببطء قبل التشغيل لتجنب حدوث التكهف (Cavitation) أو تدمير الأختام الميكانيكية المبردة (Cryogenic Seals).\n' +
-                '4. **نظافة الأدوات:** يجب إزالة الشحوم والمذيبات من كافة المفاتيح وقطع الغيار قبل التعامل مع خطوط الأكسجين.';
-        }
-
-        return runBuiltInDiagnostic('diagnostic');
+        return { text: 'فهمتك! لو تقصد معدة معينة اكتبلي اسمها والمصنع (مثلاً: **كمبرسور 3 مالت شوب**)، أو قولي أنفذلك مهمة معينة زي **افتح بلاغ طارئ** أو **افتح المخزن** أو **تقرير شامل**.' };
     }
 
-    // ============================================================
-    // المرحلة 1: ذاكرة محادثة + systemInstruction + تقليل البيانات + دعم Proxy
-    // ============================================================
-    var chatHistory = [];            // [{role:'user'|'model', text:'...'}]
-    var MAX_HISTORY_PAIRS = 8;       // آخر 8 أسئلة وأجوبة
-
-    // تطبيع النص العربي للمقارنة: أرقام هندية، تشكيل، همزات، ة/ه، ى/ي، "ال" التعريف
-    function normAr(s) {
-        var t = String(s || '').toLowerCase()
-            .replace(/[\u0660-\u0669]/g, function (d) { return String(d.charCodeAt(0) - 0x660); })
-            .replace(/[\u06F0-\u06F9]/g, function (d) { return String(d.charCodeAt(0) - 0x6F0); })
-            .replace(/[\u060C\u061B\u061F]/g, ' ')
-            .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-            .replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي')
-            .replace(/[^a-z0-9\u0600-\u06FF]+/g, ' ').trim();
-        return t.split(' ').filter(Boolean).map(function (w) {
-            return (w.length > 3 && w.indexOf('ال') === 0) ? w.slice(2) : w;
-        }).join(' ');
-    }
-
-    function getModelAndKey() {
-        var cfg = (typeof appState !== 'undefined' && appState.aiConfig) || {};
-        var model = (window.gmgNormModel ? window.gmgNormModel(cfg.model || localStorage.getItem('gmg_gemini_model')) : (cfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-3.8-flash'));
-        var key = cfg.apiKey || localStorage.getItem('gmg_gemini_key') || '';
-        var proxy = cfg.proxyUrl || localStorage.getItem('gmg_ai_proxy') || '';
-        return { model: model, key: key, proxy: proxy };
-    }
-
-    function describeEquip(item, ctx) {
-        var eq = item.equip, f = item.factory, ld = item.latestData || {};
-        var r = [];
-        if (ld.temp !== undefined && ld.temp !== '') r.push('الحرارة: ' + ld.temp + '°C');
-        if (ld.press !== undefined && ld.press !== '') r.push('الضغط: ' + ld.press + ' Bar');
-        if (ld.vib !== undefined && ld.vib !== '') r.push('الاهتزاز: ' + ld.vib + ' mm/s');
-        if (ld.status) r.push('وضع التشغيل: ' + ld.status);
-        if (ld.oil) r.push('مستوى الزيت: ' + (ld.oil === 'normal' ? 'طبيعي' : 'منخفض'));
-        var when = item.latestRec && item.latestRec.date ? (' (آخر فحص: ' + item.latestRec.date + ')') : '';
-        var sStr = r.length ? (r.join(' • ') + when) : 'لم تسجل قراءة فحص حديثة';
-        var fault = ctx.openAlerts.find(function (a) { return a.equipId === eq.id; });
-        var rem = 4000 - (Number(eq.hours || 0) % 4000);
-        return '• [' + f.name + '] ' + eq.name + ' (ID: ' + eq.id + ') | الساعات: ' + (eq.hours || 0) +
-            ' HR | ' + sStr + ' | متبقي لصيانة 4000h: ' + rem + ' ساعة | ' +
-            (fault ? ('🚨 عطل نشط: ' + fault.description) : 'لا أعطال');
-    }
-
-    // مرادفات عربية -> أسماء المعدات الإنجليزية الموجودة في التطبيق
-    var SYN = {
-        'كمبرسور': 'compressor', 'كمبروسر': 'compressor', 'كومبرسور': 'compressor', 'ضاغط': 'compressor',
-        'دراير': 'dryer', 'درايير': 'dryer', 'مجفف': 'dryer',
-        'فلتر': 'filter', 'فلاتر': 'filter', 'زيت': 'oil', 'زيوت': 'oil',
-        'خزان': 'tank', 'تانك': 'tank', 'طلمبه': 'pump', 'مضخه': 'pump', 'بمب': 'pump',
-        'مبرد': 'chiller', 'تشيلر': 'chiller', 'مولد': 'generator', 'جنراتور': 'generator',
-        'اطلس': 'atlas', 'بوجي': 'boge', 'هواء': 'air'
-    };
-    var GENERIC = { main: 1, air: 1, the: 1 };
-    var lastMatchedIds = [];
-
-    // يختار فقط المعدات المرتبطة بالسؤال (مع تصفية المصنع المذكور)
-    function pickRelevantEquipment(ctx, userPrompt) {
-        var qTokens = normAr(userPrompt).split(' ').filter(Boolean);
-        qTokens.slice().forEach(function (t) { if (SYN[t]) qTokens.push(SYN[t]); });
-        var qNums = qTokens.filter(function (t) { return /^\d+$/.test(t); });
-        var inQ = function (t) { return qTokens.indexOf(t) !== -1; };
-
-        // المصانع المذكورة في السؤال
-        var factories = {};
-        ctx.equipmentList.forEach(function (it) {
-            var ft = normAr(it.factory.name).split(' ').filter(Boolean);
-            if (ft.length && ft.every(inQ)) factories[it.factory.name] = true;
-        });
-        var hasFactory = Object.keys(factories).length > 0;
-        var inFactory = function (it) { return !hasFactory || factories[it.factory.name]; };
-
-        var scored = [];
-        ctx.equipmentList.forEach(function (it) {
-            if (!inFactory(it)) return;
-            if (it.equip.id && inQ(normAr(it.equip.id))) { scored.push({ it: it, s: 100 }); return; }
-            var toks = normAr(it.equip.name).split(' ').filter(Boolean);
-            var words = toks.filter(function (t) { return !/^\d+$/.test(t) && !GENERIC[t]; });
-            var nums = toks.filter(function (t) { return /^\d+$/.test(t); });
-            var wm = words.filter(inQ).length;
-            var numHit = nums.some(inQ);
-            var numOk = nums.length === 0 || numHit || qNums.length === 0;
-            if (wm >= 1 && numOk) scored.push({ it: it, s: wm + (numHit ? 2 : 0) });
-        });
-        scored.sort(function (a, b) { return b.s - a.s; });
-
-        var matched = scored.slice(0, 12).map(function (x) { return x.it; });
-        // ذكر مصنعاً فقط بدون معدة محددة: معدات هذا المصنع
-        if (!matched.length && hasFactory) {
-            matched = ctx.equipmentList.filter(inFactory).slice(0, 25);
-        }
-        lastMatchedIds = matched.map(function (it) { return it.equip.id; });
-
-        var picked = [], seen = {};
-        function add(item) { if (item && !seen[item.equip.id]) { seen[item.equip.id] = 1; picked.push(item); } }
-        matched.forEach(add);
-
-        // سؤال عام (بدون معدة محددة): أضف المعدات ذات المشاكل
-        if (!matched.length) {
-            var byId = {};
-            ctx.equipmentList.forEach(function (it) { byId[it.equip.id] = it; });
-            ctx.openAlerts.forEach(function (a) { add(byId[a.equipId]); });
-            ctx.anomalies.forEach(function (a) { add(byId[a.equipId]); });
-            ctx.due4000.forEach(function (d) { add(byId[d.equip.id]); });
-        }
-        return picked.slice(0, 40);
-    }
-
-    function buildSystemInstruction(ctx, userPrompt) {
-        var picked = pickRelevantEquipment(ctx, userPrompt);
-        var equipText = picked.map(function (it) { return describeEquip(it, ctx); }).join('\n');
-
-        var wantsStock = /زيت|زيوت|مخزن|مخزون|قطع|فلتر|stock|oil|filter|spare/.test(normAr(userPrompt));
-        var inv = wantsStock ? ctx.inventory.slice(0, 60) : ctx.lowInventory.slice(0, 25);
-        var invText = JSON.stringify(inv.map(function (i) { return { item: i.name, qty: i.qty, min: i.minQty, unit: i.unit }; }));
-
-        var alertsText = JSON.stringify(ctx.openAlerts.slice(0, 20).map(function (a) {
-            return { factory: a.factoryName, equip: a.equipName, issue: a.description, tech: a.assignedTo || a.user };
-        }));
-
-        // سجل آخر الفحوصات للمعدات المذكورة بالسؤال (حتى 3 معدات × 10 قراءات)
-        var histText = '';
-        var hist = (typeof appState !== 'undefined' && appState.dailyInspections) || {};
-        lastMatchedIds.slice(0, 3).forEach(function (id) {
-            var list = (hist[id] || []).slice().sort(function (a, b) {
-                return String(b.date).localeCompare(String(a.date));
-            }).slice(0, 14);
-            if (!list.length) return;
-            var it = picked.find(function (p) { return p.equip.id === id; });
-            histText += '• ' + (it ? '[' + it.factory.name + '] ' + it.equip.name : id) + ':\n' + list.map(function (r) {
-                var d = r.data || {}, x = [];
-                if (d.temp !== undefined && d.temp !== '') x.push('حرارة ' + d.temp + '°C');
-                if (d.press !== undefined && d.press !== '') x.push('ضغط ' + d.press + ' Bar');
-                if (d.vib !== undefined && d.vib !== '') x.push('اهتزاز ' + d.vib + ' mm/s');
-                if (d.status) x.push('حالة ' + d.status);
-                if (d.oil) x.push('زيت ' + d.oil);
-                if (d.hum !== undefined && d.hum !== '') x.push('رطوبة ' + d.hum);
-                if (d.belts) x.push('سيور ' + d.belts);
-                if (d.sound) x.push('صوت ' + d.sound);
-                if (r.notes) x.push('ملاحظات: ' + String(r.notes).slice(0, 80));
-                return '   - ' + String(r.date).slice(0, 16).replace('T', ' ') + (r.userName ? ' (' + r.userName + ')' : '') + ': ' + (x.join(' • ') || 'بدون قراءات');
-            }).join('\n') + '\n';
-        });
-
-        var u = ctx.currentUser || {};
-        var now = new Date().toLocaleString('ar-SA');
-
-        return 'أنت المساعد الفني الذكي لمجموعة صيانة الغاز (GMG CMMS) في شركة الراجحي للحديد.\n' +
-            'المستخدم الحالي: ' + (u.name || 'فني') + ' (' + (u.role === 'admin' ? 'مشرف' : 'فني') + '). الوقت الآن: ' + now + ' (تاريخ اليوم ISO: ' + new Date().toISOString().slice(0, 10) + ').\n\n' +
-            'قواعد الإجابة:\n' +
-            '1. افهم العامية المصرية والخليجية والفصحى وأي صياغة طبيعية، ولا تشترط صيغة معينة للسؤال.\n' +
-            '2. أجب على قدّ السؤال بالظبط وبدون حشو. التقرير الطويل فقط إذا طُلب تقرير أو تسليم وردية.\n' +
-            '3. التزم بالبيانات أدناه. لا تخترع قراءات أو أرقاماً غير موجودة؛ إن لم توجد قراءة قل ذلك صراحة.\n' +
-            '4. إذا وُجد أكثر من معدة بنفس الاسم/الرقم ولم يحدد المصنع، اذكر كل واحدة باختصار مع اسم مصنعها.\n' +
-            '5. اذكر هل القراءة طبيعية أم لا (حرارة ≥95°C أو اهتزاز ≥4.5 mm/s أو ضغط خارج 4–12 Bar يعتبر غير طبيعي) واذكر تاريخ آخر فحص.\n' +
-            '6. في الأسئلة الميكانيكية قدّم حلاً عملياً مباشراً، وفي معدات الأكسجين السائل (LOX) شدّد على منع الزيوت البترولية واستخدام شحم PFPE فقط.\n' +
-            '7. إذا كانت المعدة المسؤول عنها غير ظاهرة أدناه، اطلب من المستخدم تحديد اسمها بدل التخمين.\n' +
-            '8. إذا سأل عن يوم سابق (مثل "من 4 أيام") استخدم قسم السجل التاريخي أدناه واذكر التاريخ الفعلي للقراءة؛ وإن لم يوجد سجل لذلك اليوم قل ذلك ولا تخمّن.\n\n' +
-            'ملخص عام: عدد المصانع ' + ctx.factoriesCount + '، إجمالي المعدات ' + ctx.equipmentCount +
-            '، البلاغات المفتوحة ' + ctx.openAlerts.length + '، معدات مستحقة 4000h: ' + ctx.due4000.length +
-            '، أصناف مخزن منخفضة: ' + ctx.lowInventory.length + '.\n\n' +
-            'المعدات ذات الصلة بالسؤال (' + picked.length + ' من ' + ctx.equipmentCount + '):\n' + (equipText || 'لا يوجد') + '\n\n' +
-            (histText ? 'السجل التاريخي لآخر الفحوصات (الأحدث أولاً):\n' + histText + '\n' : '') +
-            'الأعطال النشطة:\n' + alertsText + '\n\n' +
-            (wantsStock ? 'المخزن (الزيوت وقطع الغيار):\n' : 'نواقص المخزن:\n') + invText;
-    }
-
-    // تحميل سجل الفحوصات من السحابة للمعدات المعنية بالسؤال فقط (بدل الاعتماد على تحميل مسبق قد لا يكتمل)
-    var inspFetchedAt = {};
-    async function refreshInspections(ids) {
-        if (!window.GMG || typeof window.GMG.fetchAllByEquip !== 'function' || !ids || !ids.length) return;
-        var now = Date.now();
-        var need = ids.filter(function (id) { return !inspFetchedAt[id] || now - inspFetchedAt[id] > 60000; });
-        if (!need.length) return;
-        try {
-            var map = await Promise.race([
-                window.GMG.fetchAllByEquip('inspections', need),
-                new Promise(function (_, rej) { setTimeout(function () { rej(new Error('inspections timeout')); }, 10000); })
-            ]);
-            need.forEach(function (id) { inspFetchedAt[id] = now; });
-            if (!appState.dailyInspections) appState.dailyInspections = {};
-            if (!appState.latestInspections) appState.latestInspections = {};
-            Object.keys(map || {}).forEach(function (eqId) {
-                var list = map[eqId] || [];
-                if (!list.length) return;
-                appState.dailyInspections[eqId] = list;
-                appState.latestInspections[eqId] = list.slice().sort(function (a, b) {
-                    return String(b.date).localeCompare(String(a.date));
-                })[0];
-            });
-            console.log('[GMG-AI] inspections loaded for', need.length, 'equipment; with data:', Object.keys(map || {}).length);
-        } catch (e) {
-            console.warn('[GMG-AI] could not refresh inspections:', e && e.message);
-        }
-    }
-
-    var GMG_AI_VERSION = '1.4';
-    console.log('[GMG-AI] assistant version', GMG_AI_VERSION, 'loaded');
-
-    // أمر تشخيص: اكتب "تشخيص كمبرسور 1 hrmd" ليعرض ما يراه المساعد فعلاً من بيانات
-    async function runDiagnostics(q) {
-        var out = ['**تشخيص المساعد (نسخة ' + GMG_AI_VERSION + ')**'];
-        try {
-            var cfg = getModelAndKey();
-            out.push('• النموذج: ' + cfg.model + ' | خادم آمن: ' + (cfg.proxy ? 'نعم' : 'لا'));
-            out.push('• GMG.fetchAllByEquip: ' + (window.GMG && typeof window.GMG.fetchAllByEquip === 'function' ? 'موجود' : 'غير موجود'));
-            var ctx = getLiveContext();
-            out.push('• عدد المعدات في ذاكرة التطبيق: ' + ctx.equipmentList.length);
-            out.push('• معدات لها فحوصات محمّلة في الذاكرة: ' + Object.keys(appState.dailyInspections || {}).length);
-            pickRelevantEquipment(ctx, q || '');
-            var ids = lastMatchedIds.slice(0, 5);
-            out.push('• معدات مطابقة للسؤال "' + (q || '') + '": ' + lastMatchedIds.length);
-            var byId = {};
-            ctx.equipmentList.forEach(function (it) { byId[it.equip.id] = it; });
-            for (var i = 0; i < ids.length; i++) {
-                var it = byId[ids[i]];
-                var line = '   - ' + (it ? '[' + it.factory.name + '] ' + it.equip.name : '?') + ' | ID: ' + ids[i] + ' | الساعات: ' + (it ? (it.equip.hours || 0) : '?');
-                try {
-                    var map = await window.GMG.fetchAllByEquip('inspections', [ids[i]]);
-                    var list = (map && map[ids[i]]) || [];
-                    var latest = list.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); })[0];
-                    line += ' | فحوصات في السحابة: ' + list.length + (latest ? ' | آخر فحص: ' + String(latest.date).slice(0, 16).replace('T', ' ') : '');
-                } catch (e) {
-                    line += ' | خطأ قراءة: ' + (e && (e.code || e.message));
-                }
-                out.push(line);
+    function parseAiActionTag(rawText) {
+        var text = String(rawText || '');
+        var action = null;
+        var match = text.match(/\[\[ACTION:(\{[\s\S]*?\})\]\]/);
+        if (match && match[1]) {
+            try {
+                action = JSON.parse(match[1]);
+                if (action && action.equipId) lastMentionedEquipId = action.equipId;
+                if (action && action.factoryId) lastMentionedFactoryId = action.factoryId;
+            } catch (e) {
+                console.warn('Failed to parse AI action JSON:', e);
             }
-        } catch (e) {
-            out.push('• خطأ أثناء التشخيص: ' + (e && e.message));
+            text = text.replace(match[0], '').trim();
         }
-        return out.join('\n');
+        return { text: text, action: action };
     }
 
     async function queryGeminiApi(userPrompt) {
-        if (normAr(userPrompt).indexOf('تشخيص') === 0) {
-            return await runDiagnostics(String(userPrompt).replace(/تشخيص/, '').trim());
-        }
-        var cfg = getModelAndKey();
-        if ((!cfg.key && !cfg.proxy) || cfg.model === 'builtin') {
+        var apiKey = (typeof appState !== 'undefined' && appState.aiConfig && appState.aiConfig.apiKey) || '';
+        if (!apiKey) { try { apiKey = localStorage.getItem('gmg_gemini_key') || ''; } catch (e) {} }
+        var model = (typeof appState !== 'undefined' && appState.aiConfig && appState.aiConfig.model) || '';
+        if (!model) { try { model = localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash'; } catch (e) { model = 'gemini-1.5-flash'; } }
+
+        if (!apiKey || model === 'builtin') {
             return answerFreeExpertQuery(userPrompt);
         }
 
         var ctx = getLiveContext();
-        try {
-            var pre = pickRelevantEquipment(ctx, userPrompt);
-            var idsToLoad = lastMatchedIds.length ? lastMatchedIds.slice(0, 12) : pre.map(function (it) { return it.equip.id; }).slice(0, 12);
-            await refreshInspections(idsToLoad);
-            ctx = getLiveContext();   // إعادة البناء بعد وصول القراءات
-        } catch (e) { console.warn('[GMG-AI] context refresh failed:', e && e.message); }
-        var contents = chatHistory.slice(-MAX_HISTORY_PAIRS * 2).map(function (m) {
-            return { role: m.role, parts: [{ text: m.text }] };
+        var equipSensorsSummary = ctx.equipmentList.map(function (item) {
+            var eq = item.equip;
+            var f = item.factory;
+            var ld = item.latestData || {};
+            var rParts = [];
+            if (ld.temp !== undefined && ld.temp !== '') rParts.push('حرارة:' + ld.temp + '°C');
+            if (ld.press !== undefined && ld.press !== '') rParts.push('ضغط:' + ld.press + 'Bar');
+            if (ld.vib !== undefined && ld.vib !== '') rParts.push('اهتزاز:' + ld.vib);
+            if (ld.status) rParts.push('وضع:' + ld.status);
+            if (ld.oil) rParts.push('زيت:' + ld.oil);
+            var hasFault = ctx.openAlerts.find(function (a) { return a.equipId === eq.id; });
+            return eq.id + ' | ' + f.name + ' | ' + eq.name + ' | ' + eq.hours + 'h | ' + (rParts.join(',') || 'لا قراءة') + (hasFault ? (' | عطل:' + hasFault.description) : '') + (eq.manualUrl ? ' | يوجد كتالوج' : '');
+        }).join('\n');
+
+        var systemPrompt = 'أنت المساعد الذكي الطبيعي داخل تطبيق صيانة الغاز (Gas Maintenance Group - GMG).\n' +
+            'تتكلم بعربية طبيعية ودودة ومهنية (تفهم المصري والخليجي والفصحى)، وتجاوب "على قد السؤال" بالظبط باختصار وذكاء بدون حشو أو تقارير طويلة إلا لو المستخدم طلب تقرير.\n\n' +
+            'بيانات التطبيق الحية الآن:\n' +
+            '- المستخدم الحالي: ' + ctx.currentUser.name + ' (' + ctx.currentUser.role + ')\n' +
+            '- المصانع (IDs): meltshop (Meltshop), hrmc (HRMC), hrmd (HRMD), candb (Cutting & Bending), ftp (FTP)\n' +
+            '- المعدات (id | المصنع | الاسم | الساعات | القراءات):\n' + equipSensorsSummary + '\n' +
+            '- الأعطال النشطة (' + ctx.openAlerts.length + '): ' + JSON.stringify(ctx.openAlerts.map(function (a) { return { eq: a.equipName, fac: a.factoryName, desc: a.description, by: a.assignedTo || a.user }; })) + '\n' +
+            '- نواقص المخزن: ' + JSON.stringify(ctx.lowInventory.map(function (i) { return { name: i.name, qty: i.qty, min: i.minQty, unit: i.unit }; })) + '\n' +
+            '- المتصلون الآن: ' + ctx.onlineUsers.map(function (u) { return u.name; }).join(', ') + '\n\n' +
+            'مهم جداً - تنفيذ المهام في التطبيق:\n' +
+            'إذا طلب المستخدم فتح أو تنفيذ أي مهمة في التطبيق (بلاغ طارئ، كتالوج معدة، فحص يومي، صيانة PM، ساعات، ماسح QR، مخزن، مصنع، تقارير، واتساب، وضع ليلي...)، أضف في آخر ردك سطراً واحداً فقط بصيغة:\n' +
+            '[[ACTION:{"type":"ACTION_TYPE","equipId":"اختياري","factoryId":"اختياري","desc":"اختياري"}]]\n' +
+            'أنواع المهام المتاحة (ACTION_TYPE):\n' +
+            '- open_issue (يفتح بلاغ طارئ، مرّر equipId لو حدد معدة، و desc لو ذكر سبب العطل)\n' +
+            '- open_manual (يفتح كتالوج المعدة، يحتاج equipId)\n' +
+            '- open_daily_inspection (يفتح فحص يومي لمعدة، يحتاج equipId)\n' +
+            '- open_daily_center (يفتح مركز الفحوصات اليومية لجميع المصانع)\n' +
+            '- open_pm (يفتح بنود صيانة PM لمعدة، يحتاج equipId)\n' +
+            '- open_hours (يفتح الساعات و 4000h لمعدة، يحتاج equipId)\n' +
+            '- open_qr_hub (يفتح مركز QR لمعدة، يحتاج equipId)\n' +
+            '- open_qr_scanner | open_qr_list | open_history (equipId) | open_trend (equipId)\n' +
+            '- open_active_issues | open_due_maintenance | open_inventory | open_reports | open_monthly_pdf | open_whatsapp | open_users | open_factory (factoryId) | open_dashboard | open_admin | toggle_dark\n' +
+            'لا تكتب [[ACTION:...]] إلا لو المستخدم طلب فعلاً فتح/تنفيذ مهمة.';
+
+        var contents = [];
+        chatHistory.slice(-8).forEach(function (m) {
+            contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
         });
         contents.push({ role: 'user', parts: [{ text: userPrompt }] });
 
-        var body = {
-            systemInstruction: { parts: [{ text: buildSystemInstruction(ctx, userPrompt) }] },
+        var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+        var payload = {
+            systemInstruction: { parts: [{ text: systemPrompt }] },
             contents: contents,
-            generationConfig: { maxOutputTokens: 8192 }
+            generationConfig: { temperature: 0.35, maxOutputTokens: 1000 }
         };
 
-        var FALLBACK_MODEL = 'gemini-3.5-flash-lite';
-        var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
-
-        async function sendOnce(model, signal) {
-            if (cfg.proxy) {
-                // الوضع الآمن: المفتاح على الخادم، والتطبيق يرسل توكن Firebase فقط
-                var idToken = '';
-                try { idToken = await window.firebaseAuth.currentUser.getIdToken(); } catch (e) {}
-                return fetch(cfg.proxy, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
-                    body: JSON.stringify({ model: model, body: body }),
-                    signal: signal
-                });
-            }
-            // الوضع المباشر (مؤقت): المفتاح من المتصفح
-            return fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + cfg.key, {
+        try {
+            var resp = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-                signal: signal
+                body: JSON.stringify(payload)
             });
-        }
-
-        // إرسال مع مهلة: لو تأخر الرد نعتبره 524 ونكمل للنموذج التالي بدل الانتظار الطويل
-        async function sendWithTimeout(model, ms) {
-            var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-            var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms) : null;
-            try {
-                return await sendOnce(model, ctl ? ctl.signal : undefined);
-            } catch (e) {
-                if (e && e.name === 'AbortError') {
-                    return { ok: false, status: 524, text: async function () { return 'timeout: النموذج تأخر في الرد'; } };
-                }
-                throw e;
-            } finally {
-                if (timer) clearTimeout(timer);
-            }
-        }
-
-        try {
-            // أخطاء مؤقتة: 5xx سريع -> نعيد المحاولة مرة. مهلة/524 -> ننتقل فوراً للنموذج الأخف.
-            var plan = [{ model: cfg.model, ms: 40000 }];
-            if (cfg.model !== FALLBACK_MODEL) plan.push({ model: FALLBACK_MODEL, ms: 30000 });
-            var resp = null;
-            for (var pi = 0; pi < plan.length; pi++) {
-                for (var attempt = 0; attempt < 2; attempt++) {
-                    resp = await sendWithTimeout(plan[pi].model, plan[pi].ms);
-                    if (resp.ok) break;
-                    console.warn('Gemini error', resp.status, plan[pi].model, 'attempt', attempt + 1);
-                    var fast5xx = [500, 502, 503, 504].indexOf(resp.status) !== -1;
-                    if (!(fast5xx && attempt === 0)) break;      // نعيد مرة واحدة فقط للأخطاء السريعة
-                    await sleep(1500);
-                }
-                var temporary = [500, 502, 503, 504, 524, 408].indexOf(resp.status) !== -1;
-                if (resp.ok || !temporary) break;
-            }
-
             if (!resp.ok) {
-                console.warn('Gemini call failed:', resp.status);
-                var detail = '';
-                try {
-                    var eb = await resp.text();
-                    try { detail = (JSON.parse(eb).error || {}).message || JSON.parse(eb).error || ''; } catch (e2) { detail = eb; }
-                    if (typeof detail !== 'string') detail = JSON.stringify(detail);
-                    detail = detail.slice(0, 140);
-                } catch (e3) {}
-                var hint = resp.status === 404 ? ' (اسم النموذج غير صالح أو متوقف — غيّره من إعدادات الذكاء الاصطناعي)' :
-                           resp.status === 429 ? ' (تجاوزت الحد المجاني، حاول بعد قليل)' :
-                           resp.status === 503 ? ' (خوادم جوجل مزدحمة حالياً، حاول بعد دقيقة)' :
-                           resp.status === 524 ? ' (انتهت مهلة الرد — النموذج بطيء أو مزدحم، جرّب Flash-Lite من الإعدادات)' :
-                           resp.status === 403 && cfg.proxy ? ' (الخادم رفض موقع التطبيق — راجع ALLOWED_ORIGIN في Cloudflare)' :
-                           resp.status === 401 && cfg.proxy ? ' (توكن Firebase مرفوض — راجع FIREBASE_PROJECT_ID في Cloudflare)' :
-                           resp.status === 500 && cfg.proxy ? ' (متغير ناقص في Cloudflare، مثل GEMINI_API_KEY)' : '';
-                return answerFreeExpertQuery(userPrompt) + '\n\n*(ملاحظة: تعذر الاتصال بـ Gemini [' + resp.status + ']' + hint + (detail ? ' — ' + detail : '') + '، وتمت الإجابة عبر المحرك الخبير المدمج)*';
+                var fallback = answerFreeExpertQuery(userPrompt);
+                return fallback;
             }
-
             var data = await resp.json();
-            var parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
-            var text = parts ? parts.map(function (p) { return p.text || ''; }).join('') : '';
-            if (!text) return answerFreeExpertQuery(userPrompt);
-
-            // حفظ الدور في الذاكرة (أزواج فقط)
-            chatHistory.push({ role: 'user', text: userPrompt });
-            chatHistory.push({ role: 'model', text: text });
-            if (chatHistory.length > MAX_HISTORY_PAIRS * 2) chatHistory = chatHistory.slice(-MAX_HISTORY_PAIRS * 2);
-            return text;
+            var rawText = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+            if (!rawText) return answerFreeExpertQuery(userPrompt);
+            var parsed = parseAiActionTag(rawText);
+            return { text: parsed.text, action: parsed.action, autoRun: !!parsed.action };
         } catch (err) {
             console.error('Gemini fetch error:', err);
-            var why = cfg.proxy
-                ? ' [تعذر الاتصال بالخادم الآمن: تحقق من رابط الـ Worker ومن ALLOWED_ORIGIN — ' + (err && err.message ? err.message : 'network') + ']'
-                : ' [خطأ في الشبكة]';
-            return answerFreeExpertQuery(userPrompt) + '\n\n*(تمت الإجابة عبر المحرك الخبير المدمج)*' + why;
+            return answerFreeExpertQuery(userPrompt);
         }
     }
 
-    function appendMessage(sender, text) {
+    function appendMessage(sender, text, opts) {
+        opts = opts || {};
         var container = document.getElementById('aiChatMessages');
         if (!container) return;
         var msgDiv = document.createElement('div');
@@ -8240,27 +8146,48 @@ window.gmgAi = (function () {
         var formattedText = text;
         if (!isUser) {
             formattedText = formattedText
-                .replace(/^### (.*$)/gim, '<h4 class="font-extrabold text-base text-indigo-950 dark:text-indigo-300 mt-2 mb-1">$1</h4>')
-                .replace(/^#### (.*$)/gim, '<h5 class="font-bold text-sm text-slate-800 dark:text-slate-200 mt-2 mb-1">$1</h5>')
+                .replace(/^### (.*$)/gim, '<h4 class="font-extrabold text-base text-indigo-950 dark:text-indigo-300 mt-1.5 mb-1">$1</h4>')
+                .replace(/^#### (.*$)/gim, '<h5 class="font-bold text-sm text-slate-800 dark:text-slate-200 mt-1.5 mb-0.5">$1</h5>')
                 .replace(/\*\*(.*?)\*\*/gim, '<b>$1</b>')
                 .replace(/\*(.*?)\*/gim, '<i>$1</i>')
                 .replace(/`([^`]+)`/gim, '<code class="bg-indigo-50 dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded text-xs font-mono" dir="ltr">$1</code>')
                 .replace(/^\* (.*$)/gim, '<div class="flex items-start gap-1.5 my-0.5"><span class="text-cyan-500">•</span><span>$1</span></div>')
                 .replace(/^- (.*$)/gim, '<div class="flex items-start gap-1.5 my-0.5"><span class="text-indigo-500">•</span><span>$1</span></div>')
-                .replace(/\n\n/gim, '<br>');
+                .replace(/\n/gim, '<br>');
         } else {
             formattedText = esc(text);
         }
 
         var msgId = 'aimsg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+        var actionsHtml = '';
+
+        if (!isUser && opts.action) {
+            var actIdx = savedActions.push(opts.action) - 1;
+            var meta = getActionMeta(opts.action);
+            actionsHtml += '<div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-wrap gap-1.5">' +
+                '<button type="button" onclick="gmgAi.runSavedAction(' + actIdx + ')" class="' + meta.color + ' px-3 py-1.5 rounded-xl text-[11px] font-extrabold shadow-sm transition inline-flex items-center gap-1.5">' +
+                '<i class="' + (meta.icon.indexOf('fab ') === 0 ? meta.icon : ('fas ' + meta.icon)) + '"></i> <span>' + esc(meta.label) + '</span></button></div>';
+        } else if (!isUser && opts.equipId) {
+            var a1 = savedActions.push({ type: 'open_issue', equipId: opts.equipId }) - 1;
+            var a2 = savedActions.push({ type: 'open_manual', equipId: opts.equipId }) - 1;
+            var a3 = savedActions.push({ type: 'open_daily_inspection', equipId: opts.equipId, newForm: true }) - 1;
+            var a4 = savedActions.push({ type: 'open_pm', equipId: opts.equipId }) - 1;
+            actionsHtml += '<div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700 flex flex-wrap gap-1.5">' +
+                '<button type="button" onclick="gmgAi.runSavedAction(' + a1 + ')" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1 rounded-lg text-[10px] font-bold transition"><i class="fas fa-triangle-exclamation"></i> بلاغ طارئ</button>' +
+                '<button type="button" onclick="gmgAi.runSavedAction(' + a2 + ')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-lg text-[10px] font-bold transition"><i class="fas fa-book-open"></i> الكتالوج</button>' +
+                '<button type="button" onclick="gmgAi.runSavedAction(' + a3 + ')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg text-[10px] font-bold transition"><i class="fas fa-clipboard-check"></i> فحص يومي</button>' +
+                '<button type="button" onclick="gmgAi.runSavedAction(' + a4 + ')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg text-[10px] font-bold transition"><i class="fas fa-tools"></i> صيانة PM</button>' +
+                '</div>';
+        }
 
         var copyBtn = !isUser
-            ? '<button type="button" onclick="gmgAi.copyMsgText(\'' + msgId + '\')" class="text-[10px] text-slate-400 hover:text-cyan-600 font-bold self-start mt-1 flex items-center gap-1"><i class="fas fa-copy"></i> نسخ التقرير</button>'
+            ? '<button type="button" onclick="gmgAi.copyMsgText(\'' + msgId + '\')" class="text-[10px] text-slate-400 hover:text-cyan-600 font-bold self-start mt-1.5 flex items-center gap-1"><i class="fas fa-copy"></i> نسخ</button>'
             : '';
 
         msgDiv.innerHTML = avatar +
             '<div class="max-w-[85%] ' + (isUser ? 'bg-primary text-white rounded-2xl rounded-tl-none' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tr-none') + ' p-3.5 sm:p-4 shadow-sm text-xs sm:text-sm leading-relaxed">' +
-                '<div id="' + msgId + '" class="space-y-1.5">' + formattedText + '</div>' +
+                '<div id="' + msgId + '" class="space-y-1">' + formattedText + '</div>' +
+                actionsHtml +
                 copyBtn +
             '</div>';
 
@@ -8270,6 +8197,11 @@ window.gmgAi = (function () {
 
     return {
         answerQuery: answerFreeExpertQuery,
+        updateLiveStatus: updateLiveStatusBar,
+        executeAction: executeAction,
+        runSavedAction: function (idx) {
+            if (savedActions[idx]) executeAction(savedActions[idx]);
+        },
         openChat: function () {
             var modal = document.getElementById('gmgAiChatModal');
             if (modal) modal.classList.remove('hidden');
@@ -8290,12 +8222,15 @@ window.gmgAi = (function () {
         },
         clearChat: function () {
             chatHistory = [];
+            savedActions = [];
+            lastMentionedEquipId = null;
+            lastMentionedFactoryId = null;
             var container = document.getElementById('aiChatMessages');
             if (container) {
                 container.innerHTML = '<div class="flex gap-3 items-start animate-fade-in">' +
                     '<div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white flex items-center justify-center text-sm shadow flex-shrink-0 mt-0.5"><i class="fas fa-robot"></i></div>' +
                     '<div class="flex-1 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/40 p-4 rounded-2xl rounded-tr-none shadow-sm text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed space-y-1.5">' +
-                        '<b class="text-indigo-950 dark:text-indigo-300">تم مسح المحادثة. أنا جاهز لمساعدتك في أي فحص أو عطل!</b>' +
+                        '<b class="text-indigo-950 dark:text-indigo-300">تم مسح المحادثة. اسألني أي سؤال أو اطلب مني فتح أي مهمة في التطبيق!</b>' +
                     '</div>' +
                 '</div>';
             }
@@ -8310,43 +8245,56 @@ window.gmgAi = (function () {
             if (drawer) {
                 drawer.classList.toggle('hidden');
                 if (!drawer.classList.contains('hidden')) {
-                    document.getElementById('gmgGeminiKeyInput').value = localStorage.getItem('gmg_gemini_key') || '';
-                    document.getElementById('gmgGeminiModelSelect').value = window.gmgNormModel(localStorage.getItem('gmg_gemini_model'));
+                    try {
+                        document.getElementById('gmgGeminiKeyInput').value = localStorage.getItem('gmg_gemini_key') || '';
+                        document.getElementById('gmgGeminiModelSelect').value = localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash';
+                    } catch (e) {}
                 }
             }
         },
         saveSettings: function () {
             var key = document.getElementById('gmgGeminiKeyInput').value.trim();
             var model = document.getElementById('gmgGeminiModelSelect').value;
-            localStorage.setItem('gmg_gemini_key', key);
-            localStorage.setItem('gmg_gemini_model', model);
+            try {
+                localStorage.setItem('gmg_gemini_key', key);
+                localStorage.setItem('gmg_gemini_model', model);
+            } catch (e) {}
             this.toggleSettings();
             updateLiveStatusBar();
-            if (typeof showToast === 'function') showToast(key ? 'تم حفظ مفتاح Gemini وتفعيل الذكاء الاصطناعي السحابي' : 'تم تفعيل المحرك الخبير المدمج (مجاني بالكامل)', 'success');
+            if (typeof showToast === 'function') showToast(key ? 'تم حفظ مفتاح Gemini وتفعيل الذكاء الاصطناعي السحابي' : 'تم تفعيل المحرك الذكي المدمج', 'success');
         },
         clearApiKey: function () {
-            localStorage.removeItem('gmg_gemini_key');
+            try { localStorage.removeItem('gmg_gemini_key'); } catch (e) {}
             document.getElementById('gmgGeminiKeyInput').value = '';
             this.toggleSettings();
             updateLiveStatusBar();
-            if (typeof showToast === 'function') showToast('تم مسح المفتاح والعودة للمحرك الخبير المدمج', 'info');
+            if (typeof showToast === 'function') showToast('تم مسح المفتاح والعودة للمحرك الذكي المدمج', 'info');
         },
         copyMsgText: function (elId) {
             var el = document.getElementById(elId);
-            if (el && navigator.clipboard) {
-                navigator.clipboard.writeText(el.innerText);
-                if (typeof showToast === 'function') showToast('تم نسخ التقرير بنجاح! يمكنك لصقه في واتساب أو تقاريرك', 'success');
+            if (el) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(el.innerText);
+                } else {
+                    var ta = document.createElement('textarea');
+                    ta.value = el.innerText;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                }
+                if (typeof showToast === 'function') showToast('تم النسخ بنجاح!', 'success');
             }
         },
         quickAction: async function (actionType) {
             this.openChat();
             var actionLabels = {
                 'diagnostic': '📊 فحص وتشخيص شامل لمنظومة صيانة الغاز',
-                'active_issues': '🚨 تشخيص الأعطال النشطة وتحديد حلولها وقطع غيارها',
-                'due_pm': '⏱️ تحليل معدات الـ 4000 ساعة المستحقة للصيانة',
-                'sensor_anomalies': '🌡️ كشف القراءات غير الطبيعية في الفحص اليومي',
-                'oil_stock': '🛢️ كشف موقف الزيوت والمخزون المنخفض',
-                'shift_handover': '📝 توليد تقرير تسليم الوردية الذكي'
+                'active_issues': '🚨 الأعطال النشطة وحلولها',
+                'due_pm': '⏱️ معدات الـ 4000 ساعة المستحقة',
+                'sensor_anomalies': '🌡️ القراءات غير الطبيعية',
+                'oil_stock': '🛢️ موقف الزيوت والمخزن',
+                'shift_handover': '📝 تقرير تسليم الوردية'
             };
             var label = actionLabels[actionType] || actionType;
             appendMessage('user', label);
@@ -8355,11 +8303,10 @@ window.gmgAi = (function () {
             if (typing) typing.classList.remove('hidden');
 
             var answer = runBuiltInDiagnostic(actionType);
-
             setTimeout(function () {
                 if (typing) typing.classList.add('hidden');
                 appendMessage('assistant', answer);
-            }, 250);
+            }, 200);
         },
         handleUserSubmit: async function (e) {
             e.preventDefault();
@@ -8374,16 +8321,28 @@ window.gmgAi = (function () {
             if (typing) typing.classList.remove('hidden');
             if (btn) btn.disabled = true;
 
-            var answer = await queryGeminiApi(q);
+            var result = await queryGeminiApi(q);
+            var replyText = (typeof result === 'string') ? result : (result.text || '');
+
+            chatHistory.push({ role: 'user', text: q });
+            chatHistory.push({ role: 'model', text: replyText });
+            if (chatHistory.length > 16) chatHistory = chatHistory.slice(-16);
 
             if (typing) typing.classList.add('hidden');
             if (btn) btn.disabled = false;
-            appendMessage('assistant', answer);
+
+            appendMessage('assistant', replyText, typeof result === 'object' ? result : {});
+
+            if (result && result.action && result.autoRun) {
+                setTimeout(function () {
+                    executeAction(result.action);
+                }, 450);
+            }
         },
         toggleVoice: function () {
             var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRec) {
-                if (typeof showToast === 'function') showToast('خاصية الإدخال الصوتي غير مدعومة في متصفحك الحالي، يرجى استخدام متصفح Chrome', 'info');
+                if (typeof showToast === 'function') showToast('خاصية الإدخال الصوتي غير مدعومة في متصفحك الحالي', 'info');
                 return;
             }
             var self = this;
@@ -8397,7 +8356,7 @@ window.gmgAi = (function () {
                     voiceRecognition.onstart = function () {
                         isVoiceActive = true;
                         if (btn) btn.className = 'w-10 h-10 rounded-xl bg-red-600 text-white transition flex items-center justify-center text-base flex-shrink-0 animate-pulse';
-                        if (typeof showToast === 'function') showToast('تحدث الآن باللغة العربية...', 'info');
+                        if (typeof showToast === 'function') showToast('تحدث الآن...', 'info');
                     };
                     voiceRecognition.onresult = function (evt) {
                         var transcript = evt.results[0][0].transcript;
@@ -8405,12 +8364,8 @@ window.gmgAi = (function () {
                         if (inp) inp.value = transcript;
                         self.stopVoice();
                     };
-                    voiceRecognition.onerror = function () {
-                        self.stopVoice();
-                    };
-                    voiceRecognition.onend = function () {
-                        self.stopVoice();
-                    };
+                    voiceRecognition.onerror = function () { self.stopVoice(); };
+                    voiceRecognition.onend = function () { self.stopVoice(); };
                     voiceRecognition.start();
                 } catch (e) {
                     self.stopVoice();
@@ -8552,16 +8507,13 @@ window.gmgAi = (function () {
 
         const aiCfg = appState.aiConfig || {};
         const activeKey = aiCfg.apiKey || localStorage.getItem('gmg_gemini_key') || '';
-        const activeModel = aiCfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-3.8-flash';
+        const activeModel = aiCfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-1.5-flash';
 
         if (keyInput && isMaster) keyInput.value = activeKey;
-        if (modelSelect && isMaster) modelSelect.value = window.gmgNormModel(activeModel);
-        const proxyInput = document.getElementById('admin-ai-proxy-url');
-        const activeProxy = aiCfg.proxyUrl || localStorage.getItem('gmg_ai_proxy') || '';
-        if (proxyInput && isMaster) proxyInput.value = activeProxy;
+        if (modelSelect && isMaster) modelSelect.value = activeModel;
 
         if (statusBadge) {
-            if ((activeKey || activeProxy) && activeModel !== 'builtin') {
+            if (activeKey && activeModel !== 'builtin') {
                 statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> متصل بـ ' + activeModel + ' سحابياً';
                 statusBadge.className = 'text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1.5';
             } else {
@@ -8577,18 +8529,16 @@ window.gmgAi = (function () {
             return;
         }
         const key = document.getElementById('admin-gemini-api-key')?.value?.trim() || '';
-        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-3.8-flash';
+        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-1.5-flash';
 
         if (key && !key.startsWith('AIzaSy')) {
             if (!confirm('مفتاح Google Gemini يبدأ عادة بـ AIzaSy... هل تريد حفظ هذا المفتاح رغم ذلك؟')) return;
         }
 
-        const proxyUrl = document.getElementById('admin-ai-proxy-url')?.value?.trim() || '';
         const aiCfg = {
             apiKey: key,
-            proxyUrl: proxyUrl,
             model: model,
-            enabled: !!key || !!proxyUrl,
+            enabled: !!key,
             updatedAt: Date.now(),
             updatedBy: appState.currentUser.email || 'Master Admin'
         };
@@ -8599,7 +8549,6 @@ window.gmgAi = (function () {
         } else {
             localStorage.removeItem('gmg_gemini_key');
         }
-        if (proxyUrl) localStorage.setItem('gmg_ai_proxy', proxyUrl); else localStorage.removeItem('gmg_ai_proxy');
 
         if (window.GMG && window.GMG.saveAiConfig) {
             await window.GMG.saveAiConfig(aiCfg);
@@ -8607,7 +8556,7 @@ window.gmgAi = (function () {
 
         renderAdminAiSection();
         if (typeof gmgAi !== 'undefined' && gmgAi.updateLiveStatus) gmgAi.updateLiveStatus();
-        showToast((key || proxyUrl) ? 'تم حفظ وتفعيل مفتاح Gemini لجميع المستخدمين في السحابة بنجاح!' : 'تم التفعيل على المحرك الخبير المدمج', 'success');
+        showToast(key ? 'تم حفظ وتفعيل مفتاح Gemini لجميع المستخدمين في السحابة بنجاح!' : 'تم التفعيل على المحرك الخبير المدمج', 'success');
     };
 
     window.clearAdminGeminiConfig = async function() {
@@ -8627,7 +8576,7 @@ window.gmgAi = (function () {
 
     window.testAdminGeminiConnection = async function() {
         const key = document.getElementById('admin-gemini-api-key')?.value?.trim() || localStorage.getItem('gmg_gemini_key') || '';
-        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-3.8-flash';
+        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-1.5-flash';
         if (!key) {
             showToast('ادخل مفتاح Gemini API أولاً لإجراء الاختبار', 'info');
             return;
