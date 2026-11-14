@@ -2332,6 +2332,7 @@
                 }
             };
         })();
+        window.GMG = GMG;
 
         window.getGmgSessionDocId = function() {
             let sId = sessionStorage.getItem('gmg_sess_id');
@@ -3018,7 +3019,7 @@
         
     // Preload latest inspections for all equipment to keep AI informed of real-time readings
     window.gmgPreloadAllInspections = async function() {
-        if (!window.GMG || !window.GMG.fetchAllByEquip || typeof allEquipIds !== 'function') return;
+        const _gmgRef = (typeof GMG !== 'undefined' ? GMG : window.GMG); if (!_gmgRef || !_gmgRef.fetchAllByEquip || typeof allEquipIds !== 'function') return;
         try {
             const ids = allEquipIds();
             const map = await GMG.fetchAllByEquip('inspections', ids);
@@ -7889,6 +7890,86 @@ window.gmgAi = (function () {
         return 'تم استلام الطلب.';
     }
 
+    async function ensureEquipDataLoaded(equipIds) {
+        var gmgRef = (typeof GMG !== 'undefined' ? GMG : window.GMG);
+        if (!gmgRef || !gmgRef.fetchAllByEquip || !equipIds || !equipIds.length) return;
+        var need = equipIds.filter(function (id) {
+            return !(appState.dailyInspections && appState.dailyInspections[id] && appState.dailyInspections[id].length > 0);
+        });
+        if (!need.length) return;
+        try {
+            var res = await Promise.all([
+                gmgRef.fetchAllByEquip('inspections', need),
+                gmgRef.fetchAllByEquip('pmLogs', need),
+                gmgRef.fetchAllByEquip('cycles', need)
+            ]);
+            var inspMap = res[0] || {}, pmMap = res[1] || {}, cycMap = res[2] || {};
+            if (!appState.dailyInspections) appState.dailyInspections = {};
+            if (!appState.latestInspections) appState.latestInspections = {};
+            if (!appState.maintenanceCycles) appState.maintenanceCycles = {};
+            need.forEach(function (id) {
+                if (inspMap[id] && inspMap[id].length) {
+                    appState.dailyInspections[id] = inspMap[id];
+                    var sorted = inspMap[id].slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+                    appState.latestInspections[id] = sorted[0];
+                }
+                if (cycMap[id] && cycMap[id].length) {
+                    appState.maintenanceCycles[id] = cycMap[id];
+                }
+                if (pmMap[id] && pmMap[id].length) {
+                    if (!appState._aiPmLogs) appState._aiPmLogs = {};
+                    appState._aiPmLogs[id] = pmMap[id];
+                }
+            });
+        } catch (e) {
+            console.warn('AI on-demand fetch error:', e);
+        }
+    }
+
+    function parseQueryDate(rawQuery) {
+        var q = normalizeArabic(rawQuery);
+        var now = new Date();
+        if (/(النهارده|اليوم|today)/.test(q)) {
+            return { day: now.getDate(), month: now.getMonth() + 1, label: 'اليوم (' + now.toISOString().slice(0, 10) + ')' };
+        }
+        if (/(اول امبارح|اول امس)/.test(q)) {
+            var d2 = new Date(now.getTime() - 2 * 86400000);
+            return { day: d2.getDate(), month: d2.getMonth() + 1, label: d2.toISOString().slice(0, 10) };
+        }
+        if (/(امبارح|امس|yesterday)/.test(q)) {
+            var d1 = new Date(now.getTime() - 86400000);
+            return { day: d1.getDate(), month: d1.getMonth() + 1, label: d1.toISOString().slice(0, 10) };
+        }
+        var months = {
+            'يناير':1,'jan':1,'فبراير':2,'feb':2,'مارس':3,'mar':3,'ابريل':4,'apr':4,
+            'مايو':5,'may':5,'يونيو':6,'jun':6,'يوليو':7,'jul':7,'اغسطس':8,'aug':8,
+            'سبتمبر':9,'sep':9,'اكتوبر':10,'oct':10,'نوفمبر':11,'nov':11,'ديسمبر':12,'dec':12
+        };
+        for (var mName in months) {
+            var re = new RegExp('(\\d{1,2})\\s*' + mName);
+            var m = q.match(re);
+            if (m) return { day: parseInt(m[1], 10), month: months[mName], label: m[1] + ' ' + mName };
+        }
+        var slash = q.match(/(\d{1,2})[\/\-](\d{1,2})/);
+        if (slash) {
+            return { day: parseInt(slash[1], 10), month: parseInt(slash[2], 10), label: slash[1] + '/' + slash[2] };
+        }
+        return null;
+    }
+
+    function findRecordsForDate(equipId, targetDate) {
+        var list = (appState.dailyInspections && appState.dailyInspections[equipId]) ? appState.dailyInspections[equipId] : [];
+        if (!list.length) return [];
+        var sorted = list.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+        if (!targetDate) return [sorted[0]];
+        return sorted.filter(function (rec) {
+            if (!rec.date) return false;
+            var d = new Date(rec.date);
+            if (isNaN(d.getTime())) return false;
+            return d.getDate() === targetDate.day && (d.getMonth() + 1) === targetDate.month;
+        });
+    }
+
     function formatDirectEquipmentResponse(item, ctx) {
         var eq = item.equip;
         var f = item.factory;
@@ -7945,15 +8026,29 @@ window.gmgAi = (function () {
         if (matches.length > 0) {
             if (matches.length === 1) lastMentionedEquipId = matches[0].equip.id;
 
+            var targetDate = parseQueryDate(rawQ);
             if (isTempQuery) {
                 if (matches.length === 1) {
                     var m1 = matches[0];
-                    var t1 = (m1.latestData && m1.latestData.temp !== undefined && m1.latestData.temp !== '') ? (m1.latestData.temp + '°C') : 'غير مسجلة بعد';
-                    var isHot = parseFloat(m1.latestData && m1.latestData.temp) >= 95;
-                    return { text: '🌡️ حرارة **' + m1.equip.name + ' (' + m1.factory.name + '):** `' + t1 + '` ' + (t1 === 'غير مسجلة بعد' ? '' : (isHot ? '⚠️ (مرتفعة عن 95°C)' : '✅ (طبيعية)')), equipId: m1.equip.id };
+                    var recs1 = findRecordsForDate(m1.equip.id, targetDate);
+                    if (targetDate && !recs1.length) {
+                        var latestAny = findRecordsForDate(m1.equip.id, null)[0];
+                        var hint = latestAny && latestAny.data && latestAny.data.temp !== undefined && latestAny.data.temp !== ''
+                            ? (' (آخر قراءة مسجلة كانت `' + latestAny.data.temp + '°C` بتاريخ ' + new Date(latestAny.date).toLocaleDateString('ar-SA') + ')')
+                            : '';
+                        return { text: '🌡️ لا توجد قراءة حرارة مسجلة لـ **' + m1.equip.name + ' (' + m1.factory.name + ')** يوم **' + targetDate.label + '**' + hint + '.', equipId: m1.equip.id };
+                    }
+                    var rec1 = recs1[0];
+                    var d1 = (rec1 && rec1.data) ? rec1.data : m1.latestData;
+                    var t1 = (d1 && d1.temp !== undefined && d1.temp !== '') ? (d1.temp + '°C') : 'غير مسجلة بعد';
+                    var dtLabel = rec1 && rec1.date ? (' (' + new Date(rec1.date).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ')') : '';
+                    var isHot = parseFloat(d1 && d1.temp) >= 95;
+                    return { text: '🌡️ حرارة **' + m1.equip.name + ' (' + m1.factory.name + ')**' + dtLabel + ': `' + t1 + '` ' + (t1 === 'غير مسجلة بعد' ? '' : (isHot ? '⚠️ (مرتفعة عن 95°C)' : '✅ (طبيعية)')), equipId: m1.equip.id };
                 }
-                var resT = '🌡️ **درجات الحرارة المسجلة:**\n' + matches.map(function (m) {
-                    var tv = (m.latestData && m.latestData.temp !== undefined && m.latestData.temp !== '') ? (m.latestData.temp + '°C') : 'غير مسجلة';
+                var resT = '🌡️ **درجات الحرارة المسجلة' + (targetDate ? (' يوم ' + targetDate.label) : '') + ':**\n' + matches.map(function (m) {
+                    var r = findRecordsForDate(m.equip.id, targetDate)[0];
+                    var dv = (r && r.data) ? r.data : (!targetDate ? m.latestData : {});
+                    var tv = (dv && dv.temp !== undefined && dv.temp !== '') ? (dv.temp + '°C') : 'غير مسجلة';
                     return '• **[' + m.factory.name + '] ' + m.equip.name + ':** `' + tv + '`';
                 }).join('\n');
                 return { text: resT };
@@ -8081,7 +8176,23 @@ window.gmgAi = (function () {
             '- المعدات (id | المصنع | الاسم | الساعات | القراءات):\n' + equipSensorsSummary + '\n' +
             '- الأعطال النشطة (' + ctx.openAlerts.length + '): ' + JSON.stringify(ctx.openAlerts.map(function (a) { return { eq: a.equipName, fac: a.factoryName, desc: a.description, by: a.assignedTo || a.user }; })) + '\n' +
             '- نواقص المخزن: ' + JSON.stringify(ctx.lowInventory.map(function (i) { return { name: i.name, qty: i.qty, min: i.minQty, unit: i.unit }; })) + '\n' +
-            '- المتصلون الآن: ' + ctx.onlineUsers.map(function (u) { return u.name; }).join(', ') + '\n\n' +
+            '- المتصلون الآن: ' + ctx.onlineUsers.map(function (u) { return u.name; }).join(', ') + '\n' +
+            (function () {
+                var mm = findMatchingEquipments(userPrompt, ctx);
+                if (!mm.length) return '\n';
+                var histLines = [];
+                mm.slice(0, 3).forEach(function (m) {
+                    var recs = (appState.dailyInspections && appState.dailyInspections[m.equip.id]) ? appState.dailyInspections[m.equip.id] : [];
+                    var sorted = recs.slice().sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); }).slice(0, 15);
+                    if (sorted.length) {
+                        histLines.push('سجل فحوصات ' + m.equip.name + ' (' + m.factory.name + '): ' + sorted.map(function (r) {
+                            var d = r.data || {};
+                            return (r.date ? String(r.date).slice(0, 16) : '') + ' [' + (r.userName || '') + '] حرارة:' + (d.temp || '-') + ' ضغط:' + (d.press || '-') + ' اهتزاز:' + (d.vib || '-') + ' زيت:' + (d.oil || '-') + (r.notes ? ' ملاحظة:' + r.notes : '');
+                        }).join(' || '));
+                    }
+                });
+                return histLines.length ? ('- السجل التاريخي للمعدة المذكورة:\n' + histLines.join('\n') + '\n\n') : '\n';
+            })() +
             'مهم جداً - تنفيذ المهام في التطبيق:\n' +
             'إذا طلب المستخدم فتح أو تنفيذ أي مهمة في التطبيق (بلاغ طارئ، كتالوج معدة، فحص يومي، صيانة PM، ساعات، ماسح QR، مخزن، مصنع، تقارير، واتساب، وضع ليلي...)، أضف في آخر ردك سطراً واحداً فقط بصيغة:\n' +
             '[[ACTION:{"type":"ACTION_TYPE","equipId":"اختياري","factoryId":"اختياري","desc":"اختياري"}]]\n' +
@@ -8321,6 +8432,11 @@ window.gmgAi = (function () {
             if (typing) typing.classList.remove('hidden');
             if (btn) btn.disabled = true;
 
+            var preCtx = getLiveContext();
+            var preMatches = findMatchingEquipments(q, preCtx);
+            if (preMatches.length > 0) {
+                await ensureEquipDataLoaded(preMatches.slice(0, 5).map(function (x) { return x.equip.id; }));
+            }
             var result = await queryGeminiApi(q);
             var replyText = (typeof result === 'string') ? result : (result.text || '');
 
