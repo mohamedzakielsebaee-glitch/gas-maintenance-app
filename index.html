@@ -577,9 +577,10 @@
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">النموذج الذكي (Gemini Model)</label>
                                     <select id="admin-gemini-model" class="w-full border rounded-xl px-3 py-2 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-cyan-500 outline-none font-bold text-slate-800">
-                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (الأحدث والأسرع - موصى به)</option>
-                                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (سريع ومستقر)</option>
-                                        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (خفيف)</option>
+                                        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (الأحدث والأسرع - موصى به)</option>
+                                        <option value="gemini-3.5-flash">Gemini 3.5 Flash (ذكاء عالٍ ومستقر)</option>
+                                        <option value="gemini-flash-latest">Gemini Flash Latest (أحدث إصدار تلقائياً)</option>
+                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                         <option value="builtin">المحرك الخبير المدمج فقط (بدون Gemini)</option>
                                     </select>
                                 </div>
@@ -7163,9 +7164,10 @@
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">النموذج</label>
                     <select id="gmgGeminiModelSelect" class="w-full border rounded-xl px-3 py-2 text-xs bg-white dark:bg-slate-900">
-                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (الأحدث وموصى به)</option>
-                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (سريع ومستقر)</option>
-                        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (خفيف)</option>
+                        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (الأحدث وموصى به)</option>
+                        <option value="gemini-3.5-flash">Gemini 3.5 Flash (ذكاء عالٍ)</option>
+                        <option value="gemini-flash-latest">Gemini Flash Latest (تلقائي)</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                         <option value="builtin">المحرك الخبير المدمج فقط (Offline)</option>
                     </select>
                 </div>
@@ -7360,12 +7362,12 @@ window.gmgAi = (function () {
         if (elInv) elInv.textContent = ctx.lowInventory.length;
 
         var key = localStorage.getItem('gmg_gemini_key') || '';
-        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-2.5-flash';
+        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
         var txt = document.getElementById('aiEngineStatusText');
         var badge = document.getElementById('aiEngineBadge');
         if (txt && badge) {
             if (key && model !== 'builtin') {
-                txt.textContent = 'Gemini Flash (' + (model.indexOf('2.0') !== -1 ? '2.0' : '1.5') + ') • متصل';
+                txt.textContent = model.replace(/^gemini-/i, 'Gemini ').replace(/-/g, ' ') + ' • متصل';
                 badge.className = 'inline-flex items-center gap-1 text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full font-bold';
             } else {
                 txt.textContent = 'المحرك الخبير المدمج (مجاني 100%)';
@@ -8200,7 +8202,7 @@ window.gmgAi = (function () {
 
     async function queryGeminiApi(userPrompt) {
         var apiKey = (typeof appState !== 'undefined' && appState.aiConfig && appState.aiConfig.apiKey) || localStorage.getItem('gmg_gemini_key') || '';
-        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-2.5-flash';
+        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
 
         if (!apiKey || model === 'builtin') {
             return answerFreeExpertQuery(userPrompt);
@@ -8235,8 +8237,8 @@ window.gmgAi = (function () {
         if (aiChatHistory.length > 12) aiChatHistory = aiChatHistory.slice(-12);
 
         var modelsToTry = [];
-        [model, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'].forEach(function(m) {
-            if (m && m !== 'builtin' && m !== 'gemini-1.5-flash' && modelsToTry.indexOf(m) === -1) modelsToTry.push(m);
+        [model, 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash'].forEach(function(m) {
+            if (m && m !== 'builtin' && m !== 'gemini-1.5-flash' && m !== 'gemini-2.5-flash-lite' && modelsToTry.indexOf(m) === -1) modelsToTry.push(m);
         });
 
         for (var mIdx = 0; mIdx < modelsToTry.length; mIdx++) {
@@ -8360,7 +8362,7 @@ window.gmgAi = (function () {
                 drawer.classList.toggle('hidden');
                 if (!drawer.classList.contains('hidden')) {
                     document.getElementById('gmgGeminiKeyInput').value = localStorage.getItem('gmg_gemini_key') || '';
-                    document.getElementById('gmgGeminiModelSelect').value = localStorage.getItem('gmg_gemini_model') || 'gemini-2.5-flash';
+                    document.getElementById('gmgGeminiModelSelect').value = localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
                 }
             }
         },
@@ -8601,7 +8603,7 @@ window.gmgAi = (function () {
 
         const aiCfg = appState.aiConfig || {};
         const activeKey = aiCfg.apiKey || localStorage.getItem('gmg_gemini_key') || '';
-        const activeModel = aiCfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-2.5-flash';
+        const activeModel = aiCfg.model || localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
 
         if (keyInput && isMaster) keyInput.value = activeKey;
         if (modelSelect && isMaster) modelSelect.value = activeModel;
@@ -8623,7 +8625,7 @@ window.gmgAi = (function () {
             return;
         }
         const key = document.getElementById('admin-gemini-api-key')?.value?.trim() || '';
-        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-2.5-flash';
+        const model = document.getElementById('admin-gemini-model')?.value || 'gemini-3.5-flash-lite';
 
         if (key && !key.startsWith('AIzaSy')) {
             if (!confirm('مفتاح Google Gemini يبدأ عادة بـ AIzaSy... هل تريد حفظ هذا المفتاح رغم ذلك؟')) return;
@@ -8671,8 +8673,8 @@ window.gmgAi = (function () {
     window.testAdminGeminiConnection = async function() {
         const key = document.getElementById('admin-gemini-api-key')?.value?.trim() || localStorage.getItem('gmg_gemini_key') || '';
         const selectEl = document.getElementById('admin-gemini-model');
-        let model = selectEl?.value || 'gemini-2.5-flash';
-        if (model === 'builtin' || model === 'gemini-1.5-flash') model = 'gemini-2.5-flash';
+        let model = selectEl?.value || 'gemini-3.5-flash-lite';
+        if (model === 'builtin' || model === 'gemini-1.5-flash' || model === 'gemini-2.5-flash-lite') model = 'gemini-3.5-flash-lite';
         if (!key) {
             showToast('ادخل مفتاح Gemini API أولاً لإجراء الاختبار', 'info');
             return;
@@ -8689,7 +8691,7 @@ window.gmgAi = (function () {
         };
 
         try {
-            let candidates = [model, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'].filter((v, i, a) => a.indexOf(v) === i);
+            let candidates = [model, 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash'].filter((v, i, a) => a.indexOf(v) === i);
             let lastErr = '';
             for (const m of candidates) {
                 const resp = await tryModel(m);
@@ -8710,20 +8712,19 @@ window.gmgAi = (function () {
                 lastErr = errData.error?.message || String(resp.status);
             }
 
-            // Dynamic ListModels fallback if all presets returned 404
+            // Dynamic ListModels fallback: test available flash models newest-first
             const listResp = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + key);
             if (listResp.ok) {
                 const listData = await listResp.json();
-                const flashModel = (listData.models || []).find(x =>
-                    Array.isArray(x.supportedGenerationMethods) &&
-                    x.supportedGenerationMethods.includes('generateContent') &&
-                    String(x.name || '').includes('flash')
-                ) || (listData.models || []).find(x =>
-                    Array.isArray(x.supportedGenerationMethods) &&
-                    x.supportedGenerationMethods.includes('generateContent')
-                );
-                if (flashModel && flashModel.name) {
-                    const mName = flashModel.name.replace(/^models\//, '');
+                const genModels = (listData.models || [])
+                    .filter(x => Array.isArray(x.supportedGenerationMethods) && x.supportedGenerationMethods.includes('generateContent'))
+                    .map(x => String(x.name || '').replace(/^models\//, ''))
+                    .filter(n => n.includes('gemini') && !n.includes('tts') && !n.includes('image') && !n.includes('embedding'))
+                    .sort((a, b) => {
+                        const score = s => (s.includes('3.5') ? 40 : s.includes('3.') ? 35 : s.includes('flash-latest') ? 30 : s.includes('2.5') ? 20 : 10) + (s.includes('flash') ? 5 : 0);
+                        return score(b) - score(a);
+                    });
+                for (const mName of genModels.slice(0, 8)) {
                     const r2 = await tryModel(mName);
                     if (r2.ok) {
                         if (selectEl) {
