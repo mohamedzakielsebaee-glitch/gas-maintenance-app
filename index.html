@@ -7361,8 +7361,9 @@ window.gmgAi = (function () {
         if (elPm) elPm.textContent = ctx.due4000.length;
         if (elInv) elInv.textContent = ctx.lowInventory.length;
 
-        var key = localStorage.getItem('gmg_gemini_key') || '';
-        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
+        var cloudAi = (typeof appState !== 'undefined' && appState.aiConfig) ? appState.aiConfig : null;
+        var key = (cloudAi && cloudAi.apiKey) || localStorage.getItem('gmg_gemini_key') || '';
+        var model = (cloudAi && cloudAi.model) || localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
         var txt = document.getElementById('aiEngineStatusText');
         var badge = document.getElementById('aiEngineBadge');
         if (txt && badge) {
@@ -8201,8 +8202,9 @@ window.gmgAi = (function () {
     }
 
     async function queryGeminiApi(userPrompt) {
-        var apiKey = (typeof appState !== 'undefined' && appState.aiConfig && appState.aiConfig.apiKey) || localStorage.getItem('gmg_gemini_key') || '';
-        var model = localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
+        var cloudAi = (typeof appState !== 'undefined' && appState.aiConfig) ? appState.aiConfig : null;
+        var apiKey = (cloudAi && cloudAi.apiKey) || localStorage.getItem('gmg_gemini_key') || '';
+        var model = (cloudAi && cloudAi.model) || localStorage.getItem('gmg_gemini_model') || 'gemini-3.5-flash-lite';
 
         if (!apiKey || model === 'builtin') {
             return answerFreeExpertQuery(userPrompt);
@@ -8320,6 +8322,7 @@ window.gmgAi = (function () {
     }
 
     return {
+        updateLiveStatus: updateLiveStatusBar,
         answerQuery: answerFreeExpertQuery,
         openChat: function () {
             var modal = document.getElementById('gmgAiChatModal');
@@ -8366,21 +8369,38 @@ window.gmgAi = (function () {
                 }
             }
         },
-        saveSettings: function () {
+        saveSettings: async function () {
             var key = document.getElementById('gmgGeminiKeyInput').value.trim();
             var model = document.getElementById('gmgGeminiModelSelect').value;
-            localStorage.setItem('gmg_gemini_key', key);
+            if (key) localStorage.setItem('gmg_gemini_key', key);
+            else localStorage.removeItem('gmg_gemini_key');
             localStorage.setItem('gmg_gemini_model', model);
+            var aiCfg = {
+                apiKey: key,
+                model: model,
+                enabled: !!key && model !== 'builtin',
+                updatedAt: Date.now(),
+                updatedBy: (appState.currentUser && appState.currentUser.email) || 'Master Admin'
+            };
+            appState.aiConfig = aiCfg;
+            if (window.GMG && window.GMG.saveAiConfig) {
+                try { await window.GMG.saveAiConfig(aiCfg); } catch (e) { console.error(e); }
+            }
             this.toggleSettings();
             updateLiveStatusBar();
-            if (typeof showToast === 'function') showToast(key ? 'تم حفظ مفتاح Gemini وتفعيل الذكاء الاصطناعي السحابي' : 'تم تفعيل المحرك الخبير المدمج (مجاني بالكامل)', 'success');
+            if (typeof showToast === 'function') showToast(key ? 'تم حفظ ومزامنة مفتاح Gemini لجميع المستخدمين في السحابة' : 'تم تفعيل المحرك الخبير المدمج (مجاني بالكامل)', 'success');
         },
-        clearApiKey: function () {
+        clearApiKey: async function () {
             localStorage.removeItem('gmg_gemini_key');
             document.getElementById('gmgGeminiKeyInput').value = '';
+            var aiCfg = { apiKey: '', model: 'builtin', enabled: false, updatedAt: Date.now() };
+            appState.aiConfig = aiCfg;
+            if (window.GMG && window.GMG.saveAiConfig) {
+                try { await window.GMG.saveAiConfig(aiCfg); } catch (e) {}
+            }
             this.toggleSettings();
             updateLiveStatusBar();
-            if (typeof showToast === 'function') showToast('تم مسح المفتاح والعودة للمحرك الخبير المدمج', 'info');
+            if (typeof showToast === 'function') showToast('تم مسح المفتاح والعودة للمحرك الخبير المدمج للجميع', 'info');
         },
         copyMsgText: function (elId) {
             var el = document.getElementById(elId);
